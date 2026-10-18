@@ -57,25 +57,67 @@ app.config.update(
 # --------------------------------------------------------------------------
 # Base de données
 # --------------------------------------------------------------------------
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+USE_PG = bool(DATABASE_URL)
+
+
+class _Conn:
+    """Connexion compatible SQLite (local) et PostgreSQL (Supabase)."""
+    def __init__(self):
+        if USE_PG:
+            import psycopg2
+            from psycopg2.extras import RealDictCursor
+            self.c = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+            self.cur = self.c.cursor()
+        else:
+            self.c = sqlite3.connect(DB)
+            self.c.row_factory = sqlite3.Row
+
+    def execute(self, q, params=()):
+        if USE_PG:
+            self.cur.execute(q.replace("?", "%s").replace("datetime('now')", "now()"), params)
+            return self.cur
+        return self.c.execute(q, params)
+
+    def commit(self):
+        self.c.commit()
+
+    def close(self):
+        self.c.close()
+
+
 def db():
-    conn = sqlite3.connect(DB)
-    conn.row_factory = sqlite3.Row
-    return conn
+    return _Conn()
 
 
 def init_db():
     conn = db()
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            created_at TEXT NOT NULL DEFAULT (datetime('now')),
-            last_login TEXT
-        )
-    """)
-    conn.commit()
-    conn.close()
+    try:
+        if USE_PG:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id SERIAL PRIMARY KEY,
+                    email TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT now(),
+                    last_login TIMESTAMP
+                )
+            """)
+        else:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    last_login TEXT
+                )
+            """)
+        conn.commit()
+    except Exception as e:
+        print("init_db:", e)
+    finally:
+        conn.close()
 
 
 # Création de la table au démarrage (gunicorn inclus)
@@ -311,10 +353,13 @@ def api_register():
         )
         conn.commit()
         row = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
-    except sqlite3.IntegrityError:
+    except Exception as e:
         conn.close()
         enregistrer_tentative(ip)
-        return jsonify(ok=False, error="Un compte existe déjà avec cet email."), 409
+        msg = str(e).lower()
+        if isinstance(e, sqlite3.IntegrityError) or "unique" in msg or "duplicate" in msg:
+            return jsonify(ok=False, error="Un compte existe déjà avec cet email."), 409
+        return jsonify(ok=False, error="Erreur lors de la création du compte."), 500
     finally:
         conn.close()
 
@@ -695,46 +740,76 @@ def api_tts():
     except Exception:
         vitesse = 1.0
     vitesse = max(0.25, min(4.0, vitesse))
-    # Piper : length_scale > 1 = plus lent
-    length_scale = round(1.0 / vitesse, 2)
-
     lang = (data.get("lang") or "fr").strip().lower()
-    modele = PIPER_MODEL_EN if lang.startswith("en") else PIPER_MODEL
-
-    if not (os.path.exists(PIPER_BIN) and os.path.exists(modele)):
-        return jsonify(ok=False, error="Voix Piper non installée."), 503
 
     import base64
-    import subprocess
-    import tempfile
 
-    fd, chemin = tempfile.mkstemp(suffix=".wav")
-    os.close(fd)
+    # 1) Edge TTS — voix neuronale gratuite (aucune cle)
     try:
-        proc = subprocess.run(
-            [PIPER_BIN, "--model", modele,
-             "--length_scale", str(length_scale), "--output_file", chemin],
-            input=texte.encode("utf-8"), capture_output=True, timeout=120,
-        )
-        if proc.returncode != 0:
-            return jsonify(ok=False, error=proc.stderr.decode("utf-8", "replace")[:200]), 502
-        with open(chemin, "rb") as f:
-            audio = f.read()
-        return jsonify(ok=True, audio="data:audio/wav;base64," + base64.b64encode(audio).decode())
-    except Exception as e:
-        return jsonify(ok=False, error="Voix indisponible : %s" % e), 502
-    finally:
+        import asyncio
+        import tempfile
+        import edge_tts
+
+        voix = "en-US-AriaNeural" if lang.startswith("en") else "fr-FR-DeniseNeural"
+        pct = int(round((vitesse - 1.0) * 100))
+        pct = max(-50, min(100, pct))
+        rate = ("+%d%%" % pct) if pct >= 0 else ("%d%%" % pct)
+
+        fd, chemin = tempfile.mkstemp(suffix=".mp3")
+        os.close(fd)
         try:
-            os.unlink(chemin)
-        except Exception:
-            pass
+            async def _gen():
+                c = edge_tts.Communicate(texte, voix, rate=rate)
+                await c.save(chemin)
+            asyncio.run(_gen())
+            with open(chemin, "rb") as f:
+                audio = f.read()
+            if audio:
+                return jsonify(ok=True, audio="data:audio/mpeg;base64," + base64.b64encode(audio).decode())
+        finally:
+            try:
+                os.unlink(chemin)
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    # 2) Repli Piper (si installe localement)
+    length_scale = round(1.0 / vitesse, 2)
+    modele = PIPER_MODEL_EN if lang.startswith("en") else PIPER_MODEL
+    if os.path.exists(PIPER_BIN) and os.path.exists(modele):
+        import subprocess
+        import tempfile
+        fd, chemin = tempfile.mkstemp(suffix=".wav")
+        os.close(fd)
+        try:
+            proc = subprocess.run(
+                [PIPER_BIN, "--model", modele, "--length_scale", str(length_scale),
+                 "--output_file", chemin],
+                input=texte.encode("utf-8"), capture_output=True, timeout=120,
+            )
+            if proc.returncode == 0:
+                with open(chemin, "rb") as f:
+                    audio = f.read()
+                return jsonify(ok=True, audio="data:audio/wav;base64," + base64.b64encode(audio).decode())
+        finally:
+            try:
+                os.unlink(chemin)
+            except Exception:
+                pass
+
+    return jsonify(ok=False, error="Voix indisponible."), 502
 
 
 @app.route("/api/tts/status")
 @login_required
 def api_tts_status():
-    ok = os.path.exists(PIPER_BIN) and os.path.exists(PIPER_MODEL)
-    return jsonify(ok=ok, voice="fr_FR-siwis-medium" if ok else None)
+    try:
+        import edge_tts  # noqa
+        return jsonify(ok=True, voice="Edge TTS (fr-FR-DeniseNeural)")
+    except Exception:
+        ok = os.path.exists(PIPER_BIN) and os.path.exists(PIPER_MODEL)
+        return jsonify(ok=ok, voice="fr_FR-siwis-medium" if ok else None)
 
 
 # --------------------------------------------------------------------------
