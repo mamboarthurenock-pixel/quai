@@ -2038,6 +2038,28 @@
     });
   }
 
+  /* ---- Génération d'image pour une fiche (via serveur Pollinations) ---- */
+  async function genererImageFiche(matiere, titre){
+    const cacheKey = "img:" + titre;
+    try{
+      const cache = localStorage.getItem(cacheKey);
+      if(cache) return cache;
+    }catch(e){}
+    const res = await fetch("/api/ai/image", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      credentials: "same-origin",
+      body: JSON.stringify({prompt: "illustration pédagogique, " + (matiere || "") + " : " + titre})
+    });
+    let data = null;
+    try{ data = await res.json(); }catch(e){ data = null; }
+    if(!res.ok || !data || !data.ok || !data.image){
+      throw new Error((data && data.error) || "Image indisponible");
+    }
+    try{ localStorage.setItem(cacheKey, data.image); }catch(e){}
+    return data.image;
+  }
+
   /* ============================================================
      FLASHCARDS — Répétition espacée (SM-2)
      ============================================================ */
