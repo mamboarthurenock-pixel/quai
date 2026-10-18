@@ -396,6 +396,226 @@
   let store = loadStore();
 
   /* ============================================================
+     SUIVI : maîtrise par matière + carnet d'erreurs
+     ============================================================ */
+
+  const PROGRESS_KEY = "progress";
+  const ERRORS_KEY = "errors";
+  const ERRORS_MAX = 100;
+
+  function loadProgress(){
+    try{
+      const raw = localStorage.getItem(PROGRESS_KEY);
+      if(!raw) return {};
+      const obj = JSON.parse(raw);
+      return (obj && typeof obj === "object") ? obj : {};
+    }catch(e){ return {}; }
+  }
+
+  function saveProgress(obj){
+    try{ localStorage.setItem(PROGRESS_KEY, JSON.stringify(obj)); }catch(e){}
+  }
+
+  function loadErrors(){
+    try{
+      const raw = localStorage.getItem(ERRORS_KEY);
+      if(!raw) return [];
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : [];
+    }catch(e){ return []; }
+  }
+
+  function saveErrors(arr){
+    try{ localStorage.setItem(ERRORS_KEY, JSON.stringify(arr)); }catch(e){}
+  }
+
+  let progressStore = loadProgress();
+  let errorsStore = loadErrors();
+
+  function progressFor(matiere){
+    const p = progressStore[matiere];
+    if(!p) return {vues:0, bonnes:0, mauvaises:0};
+    return {
+      vues: Number(p.vues) || 0,
+      bonnes: Number(p.bonnes) || 0,
+      mauvaises: Number(p.mauvaises) || 0
+    };
+  }
+
+  function recordAnswer(matiere, correct, q){
+    const p = progressFor(matiere);
+    p.vues++;
+    if(correct) p.bonnes++;
+    else p.mauvaises++;
+    progressStore[matiere] = p;
+    saveProgress(progressStore);
+
+    if(!correct && q){
+      // Sans doublon sur q : on retire l'ancienne occurrence puis on ajoute en tête
+      errorsStore = errorsStore.filter(e => e.q !== q.q);
+      errorsStore.unshift({
+        matiere: q.matiere,
+        q: q.q,
+        options: q.options.slice(),
+        bonne: q.bonne,
+        explication: q.explication,
+        date: Date.now()
+      });
+      if(errorsStore.length > ERRORS_MAX) errorsStore = errorsStore.slice(0, ERRORS_MAX);
+      saveErrors(errorsStore);
+    }
+  }
+
+  function pctMaitrise(matiere){
+    const p = progressFor(matiere);
+    if(!p.vues) return null;
+    return Math.round((p.bonnes / p.vues) * 100);
+  }
+
+  function badgeMaitrise(pct){
+    if(pct === null) return {cls:"badge-debutant", label:"Débutant"};
+    if(pct < 40) return {cls:"badge-debutant", label:"Débutant"};
+    if(pct <= 70) return {cls:"badge-progres", label:"En progrès"};
+    return {cls:"badge-solide", label:"Solide"};
+  }
+
+  function notePredite(){
+    // Moyenne pondérée par le nombre de vues
+    let sumPct = 0, sumVues = 0;
+    Object.keys(progressStore).forEach(m => {
+      const p = progressFor(m);
+      if(p.vues > 0){
+        sumPct += (p.bonnes / p.vues) * p.vues;
+        sumVues += p.vues;
+      }
+    });
+    if(!sumVues) return null;
+    const pct = sumPct / sumVues;
+    return Math.round((pct / 100) * 20 * 10) / 10;
+  }
+
+  function messageNote(note){
+    if(note === null) return "Réponds à quelques questions pour voir ta note prédite.";
+    if(note < 8) return "Courage, chaque révision compte. Tu vas y arriver 💪";
+    if(note < 12) return "Tu progresses, continue sur cette lancée 🌱";
+    if(note < 16) return "Solide ! Encore un petit effort pour viser l'excellence ✨";
+    return "Excellent travail, tu maîtrises ton sujet ! 🏆";
+  }
+
+  function renderSuivi(){
+    const zone = $("#suiviZone");
+    if(!zone) return;
+
+    const matieres = QUIZ_MATIERES.slice();
+    // Ajoute les matières présentes dans progress mais pas dans QUIZ_MATIERES
+    Object.keys(progressStore).forEach(m => {
+      if(!matieres.includes(m)) matieres.push(m);
+    });
+
+    let html = "";
+
+    // Note prédite
+    const note = notePredite();
+    const noteTxt = note === null ? "—" : note.toFixed(1);
+    html += `
+      <div class="card note-card">
+        <div class="note-card-label">Note prédite</div>
+        <div class="note-card-value">${noteTxt}<span>/20</span></div>
+        <div class="note-card-msg">${escapeHtml(messageNote(note))}</div>
+      </div>
+    `;
+
+    // Maîtrise par matière
+    html += `<div class="card"><div class="section-title" style="margin-bottom:14px">Maîtrise par matière</div><div class="suivi-list">`;
+    matieres.forEach(m => {
+      const p = progressFor(m);
+      const pct = pctMaitrise(m);
+      const badge = badgeMaitrise(pct);
+      const width = pct === null ? 0 : pct;
+      html += `
+        <div class="suivi-item">
+          <div class="suivi-item-head">
+            <span class="suivi-mat">${escapeHtml(m)}</span>
+            <span class="suivi-badge ${badge.cls}">${badge.label}</span>
+          </div>
+          <div class="suivi-bar"><div class="suivi-bar-fill" style="width:${width}%"></div></div>
+          <div class="suivi-meta">
+            <span>${pct === null ? "Pas encore de données" : pct + " % de réussite"}</span>
+            <span>${p.vues} vue${p.vues > 1 ? "s" : ""}</span>
+          </div>
+        </div>`;
+    });
+    html += `</div></div>`;
+
+    // Carnet d'erreurs
+    html += `<div class="card"><div class="section-title" style="margin-bottom:14px">Carnet d'erreurs</div>`;
+    if(!errorsStore.length){
+      html += `<div class="suivi-empty">Aucune erreur enregistrée — continue comme ça ✨</div>`;
+    } else {
+      html += `<div class="errors-list">`;
+      errorsStore.forEach((e, i) => {
+        const d = new Date(e.date);
+        const dateStr = d.toLocaleDateString("fr-FR", {day:"2-digit", month:"2-digit"});
+        html += `
+          <div class="error-item">
+            <div class="error-item-head">
+              <span class="error-mat">${escapeHtml(e.matiere)}</span>
+              <span class="error-date">${dateStr}</span>
+            </div>
+            <div class="error-q">${escapeHtml(e.q)}</div>
+            <div class="error-good">✅ ${escapeHtml(e.options[e.bonne])}</div>
+            <button class="btn error-revoir" data-idx="${i}">Revoir</button>
+          </div>`;
+      });
+      html += `</div>`;
+    }
+    html += `</div>`;
+
+    // Bouton vider
+    html += `<button class="btn ghost" id="suiviClearBtn" style="margin-top:4px">🗑️ Vider mes données</button>`;
+
+    zone.innerHTML = html;
+
+    $$(".error-revoir").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const idx = parseInt(btn.dataset.idx, 10);
+        const e = errorsStore[idx];
+        if(e) revoirErreur(e);
+      });
+    });
+
+    const clear = $("#suiviClearBtn");
+    if(clear) clear.addEventListener("click", () => {
+      if(!confirm("Vider toutes tes données de suivi (maîtrise + carnet d'erreurs) ?")) return;
+      progressStore = {};
+      errorsStore = [];
+      saveProgress(progressStore);
+      saveErrors(errorsStore);
+      renderSuivi();
+    });
+  }
+
+  function revoirErreur(e){
+    // Lance un quiz d'une seule question à partir de l'erreur
+    const q = {
+      matiere: e.matiere,
+      q: e.q,
+      options: e.options.slice(),
+      bonne: e.bonne,
+      explication: e.explication
+    };
+    quizState = {
+      matiere: e.matiere,
+      questions: [q],
+      index: 0,
+      score: 0,
+      answered: false
+    };
+    switchTab("quiz");
+    renderQuizQuestion();
+  }
+
+  /* ============================================================
      HEADER : date + horloge
      ============================================================ */
 
@@ -953,6 +1173,7 @@
     if(correct) st.score++;
     else st.lastWrong = q.options[idx];
     marquerVue(questionId(q));
+    recordAnswer(q.matiere, correct, q);
 
     $$(".quiz-opt").forEach(btn => {
       const i = parseInt(btn.dataset.idx, 10);
@@ -2206,6 +2427,7 @@
     initEtude();
     initFlashcards();
     initAssistant();
+    renderSuivi();
     $("#calcCount").textContent = store.calcCount || 0;
 
     // Rafraîchir l'onglet Aujourd'hui toutes les 30 s
