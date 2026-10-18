@@ -118,6 +118,97 @@
     "Anglais":["Vocabulaire transport/logistique","Relire le texte étudié","Préparer 5 phrases d'expression"]
   };
 
+  // Banque de questions du quiz
+  const QUIZ_BANK = [
+    // ---- GDOD (douanes) ----
+    {matiere:"GDOD", q:"Quels sont les 3 éléments déclaratifs en douane ?",
+     options:["Espèce, Origine, Valeur","Poids, Volume, Prix","FOB, CAF, CIF","DD, TVA, PCS"],
+     bonne:0, explication:"Les 3 éléments déclaratifs sont l'espèce tarifaire, l'origine et la valeur en douane."},
+    {matiere:"GDOD", q:"Valeur en douane =",
+     options:["FOB seul","CIF = FOB + fret + assurance","Prix de détail","La TVA"],
+     bonne:1, explication:"La valeur en douane est la valeur CIF : FOB + fret + assurance."},
+    {matiere:"GDOD", q:"Séries de régimes IM :",
+     options:["1000/2000/3000","4000/4070/4080/5000/7000/8000","A/B/C","1/2/3"],
+     bonne:1, explication:"Les séries de régimes à l'importation sont 4000, 4070, 4080, 5000, 7000 et 8000."},
+
+    // ---- TRF (ferroviaire) ----
+    {matiere:"TRF", q:"Quelle est la voie utilisée par SITARAIL ?",
+     options:["Voie large","Voie métrique","Voie normale","Voie étroite"],
+     bonne:1, explication:"SITARAIL exploite une voie métrique (1,00 m) en Côte d'Ivoire."},
+    {matiere:"TRF", q:"Quel type de traction utilise SITARAIL ?",
+     options:["Électrique","Thermique diesel","Vapeur","Hybride"],
+     bonne:1, explication:"La traction est thermique diesel sur le réseau SITARAIL."},
+    {matiere:"TRF", q:"Combien de feuillets compte la liasse DEX ?",
+     options:["3","5","7","9"],
+     bonne:2, explication:"La liasse DEX (Déclaration d'Exportation) comporte 7 feuillets."},
+
+    // ---- TAM (aérien) ----
+    {matiere:"TAM", q:"Que signifie EC 21 ?",
+     options:["Élaborer un plan de transport aérien","Évaluer le coût du fret","Envoyer un colis","Établir un contrat"],
+     bonne:0, explication:"EC 21 correspond à « Élaborer un plan de transport aérien »."},
+    {matiere:"TAM", q:"Quel document accompagne la marchandise en transport aérien ?",
+     options:["Connaissement (B/L)","Lettre de transport aérien (LTA / AWB)","Lettre de voiture CMR","DAU"],
+     bonne:1, explication:"En aérien, le document de transport est la LTA (Air Waybill)."},
+    {matiere:"TAM", q:"Unité de charge typique en aérien :",
+     options:["Conteneur 20 pieds","Palette / ULD","Wagon","Citerne"],
+     bonne:1, explication:"Les ULD (Unit Load Devices) et palettes sont les unités de charge aériennes."},
+
+    // ---- DROIT ----
+    {matiere:"DROIT", q:"Quelle est la norme suprême dans la hiérarchie des normes ?",
+     options:["La loi","Le décret","La Constitution","L'arrêté"],
+     bonne:2, explication:"La Constitution est au sommet de la hiérarchie des normes."},
+    {matiere:"DROIT", q:"Le droit commercial régit :",
+     options:["Les relations entre particuliers","Les actes de commerce et commerçants","Le droit pénal","Le droit du travail uniquement"],
+     bonne:1, explication:"Le droit commercial encadre les actes de commerce et les commerçants."},
+    {matiere:"DROIT", q:"Un contrat est valable s'il réunit :",
+     options:["Consentement, capacité, objet, cause","Signature et timbre","Prix et délai","Témoins et notaire"],
+     bonne:0, explication:"Les conditions de validité : consentement, capacité, objet certain et cause licite."},
+
+    // ---- TEF ----
+    {matiere:"TEF", q:"Le transport ferroviaire est surtout adapté aux :",
+     options:["Petits colis urgents","Marchandises lourdes et volumineuses","Voyageurs uniquement","Produits périssables uniquement"],
+     bonne:1, explication:"Le ferroviaire est économique pour les charges lourdes sur longues distances."},
+    {matiere:"TEF", q:"Un wagon-trémie sert à transporter :",
+     options:["Des liquides","Des vracs solides (céréales, minerais)","Des conteneurs","Des voitures"],
+     bonne:1, explication:"Le wagon-trémie transporte des vracs solides en vrac."},
+    {matiere:"TEF", q:"La lettre de voiture ferroviaire s'appelle :",
+     options:["CIM","CMR","B/L","AWB"],
+     bonne:0, explication:"La CIM est la lettre de voiture du transport ferroviaire international."},
+
+    // ---- ANG (anglais) ----
+    {matiere:"ANG", q:"« Freight forwarder » signifie :",
+     options:["Transporteur maritime","Transitaire","Douanier","Capitaine"],
+     bonne:1, explication:"Le freight forwarder est le transitaire qui organise le transport."},
+    {matiere:"ANG", q:"« Bill of lading » correspond à :",
+     options:["Lettre de voiture","Connaissement maritime","Facture","Certificat d'origine"],
+     bonne:1, explication:"Le Bill of Lading (B/L) est le connaissement maritime."},
+    {matiere:"ANG", q:"« Customs clearance » veut dire :",
+     options:["Dédouanement","Chargement","Assurance","Livraison"],
+     bonne:0, explication:"Customs clearance = opération de dédouanement."},
+
+    // ---- MATH ----
+    {matiere:"MATH", q:"Un article coûte 50 000 FCFA, TVA 18 %. Prix TTC ?",
+     options:["59 000 FCFA","58 000 FCFA","60 000 FCFA","55 000 FCFA"],
+     bonne:0, explication:"50 000 × 1,18 = 59 000 FCFA."},
+    {matiere:"MATH", q:"15 % de 2 000 =",
+     options:["200","300","150","250"],
+     bonne:1, explication:"2 000 × 0,15 = 300."},
+    {matiere:"MATH", q:"Si le fret est 20 % du FOB de 100 000, le fret vaut :",
+     options:["10 000","20 000","2 000","120 000"],
+     bonne:1, explication:"100 000 × 0,20 = 20 000 FCFA."},
+
+    // ---- ECO ENT ----
+    {matiere:"ECO ENT", q:"Le chiffre d'affaires est :",
+     options:["Le bénéfice net","Le total des ventes","Les charges","Le capital"],
+     bonne:1, explication:"Le chiffre d'affaires représente le total des ventes réalisées."},
+    {matiere:"ECO ENT", q:"Une SARL est une société :",
+     options:["À responsabilité illimitée","À responsabilité limitée aux apports","Unipersonnelle obligatoire","Sans capital"],
+     bonne:1, explication:"Dans une SARL, la responsabilité est limitée aux apports des associés."},
+    {matiere:"ECO ENT", q:"Le bilan d'une entreprise comprend :",
+     options:["Actif et passif","Recettes et dépenses","Ventes et achats","Salaires et impôts"],
+     bonne:0, explication:"Le bilan se compose de l'actif et du passif."}
+  ];
+
   /* ============================================================
      UTILITAIRES
      ============================================================ */
@@ -476,6 +567,172 @@
   }
 
   /* ============================================================
+     QUIZ
+     ============================================================ */
+
+  const QUIZ_MATIERES = ["GDOD","TRF","TAM","DROIT","TEF","ANG","MATH","ECO ENT"];
+
+  let quizState = null;
+
+  function bestKey(matiere){
+    return "lpcc_quiz_best_" + matiere;
+  }
+
+  function getBest(matiere){
+    try{
+      const v = localStorage.getItem(bestKey(matiere));
+      return v === null ? null : parseInt(v, 10);
+    }catch(e){ return null; }
+  }
+
+  function setBest(matiere, score){
+    try{
+      const prev = getBest(matiere);
+      if(prev === null || score > prev){
+        localStorage.setItem(bestKey(matiere), String(score));
+      }
+    }catch(e){}
+  }
+
+  function renderQuizSelector(){
+    const zone = $("#quizZone");
+    let html = '<div class="quiz-selector">';
+    QUIZ_MATIERES.forEach(m => {
+      const best = getBest(m);
+      const bestTxt = best === null ? "—" : best + "/20";
+      html += `
+        <button class="quiz-mat-btn" data-matiere="${escapeHtml(m)}">
+          <span class="qm-name">${escapeHtml(m)}</span>
+          <span class="qm-best">Record : ${bestTxt}</span>
+        </button>`;
+    });
+    html += "</div>";
+    zone.innerHTML = html;
+
+    $$(".quiz-mat-btn").forEach(btn => {
+      btn.addEventListener("click", () => startQuiz(btn.dataset.matiere));
+    });
+  }
+
+  function startQuiz(matiere){
+    const questions = QUIZ_BANK.filter(q => q.matiere === matiere);
+    if(questions.length === 0){
+      renderQuizSelector();
+      return;
+    }
+    quizState = {
+      matiere,
+      questions,
+      index: 0,
+      score: 0,
+      answered: false
+    };
+    renderQuizQuestion();
+  }
+
+  function renderQuizQuestion(){
+    const zone = $("#quizZone");
+    const st = quizState;
+    const total = st.questions.length;
+    const q = st.questions[st.index];
+    const progress = Math.round((st.index / total) * 100);
+
+    let html = `
+      <div class="quiz-head">
+        <span class="quiz-mat">${escapeHtml(st.matiere)}</span>
+        <span class="quiz-score">Score : <b>${st.score}</b> / ${total}</span>
+      </div>
+      <div class="quiz-progress"><div class="quiz-progress-bar" style="width:${progress}%"></div></div>
+      <div class="quiz-card">
+        <div class="quiz-qnum">Question ${st.index + 1} / ${total}</div>
+        <div class="quiz-question">${escapeHtml(q.q)}</div>
+        <div class="quiz-options">
+          ${q.options.map((opt, i) => `
+            <button class="quiz-opt" data-idx="${i}">${escapeHtml(opt)}</button>
+          `).join("")}
+        </div>
+        <div class="quiz-feedback" id="quizFeedback"></div>
+      </div>
+    `;
+    zone.innerHTML = html;
+
+    $$(".quiz-opt").forEach(btn => {
+      btn.addEventListener("click", () => answerQuiz(parseInt(btn.dataset.idx, 10)));
+    });
+  }
+
+  function answerQuiz(idx){
+    const st = quizState;
+    if(!st || st.answered) return;
+    st.answered = true;
+
+    const q = st.questions[st.index];
+    const correct = idx === q.bonne;
+    if(correct) st.score++;
+
+    $$(".quiz-opt").forEach(btn => {
+      const i = parseInt(btn.dataset.idx, 10);
+      btn.disabled = true;
+      if(i === q.bonne) btn.classList.add("good");
+      else if(i === idx) btn.classList.add("bad");
+    });
+
+    const fb = $("#quizFeedback");
+    fb.innerHTML = `
+      <div class="quiz-fb-title ${correct ? "ok" : "ko"}">
+        ${correct ? "✅ Bonne réponse !" : "❌ Mauvaise réponse"}
+      </div>
+      <div class="quiz-fb-exp">${escapeHtml(q.explication)}</div>
+      <button class="btn quiz-next" id="quizNextBtn">
+        ${st.index + 1 < st.questions.length ? "Question suivante" : "Voir le résultat"}
+      </button>
+    `;
+    fb.classList.add("show");
+
+    $("#quizNextBtn").addEventListener("click", () => {
+      st.answered = false;
+      st.index++;
+      if(st.index >= st.questions.length){
+        renderQuizResult();
+      } else {
+        renderQuizQuestion();
+      }
+    });
+  }
+
+  function renderQuizResult(){
+    const st = quizState;
+    const total = st.questions.length;
+    const note = Math.round((st.score / total) * 20);
+    setBest(st.matiere, note);
+    const best = getBest(st.matiere);
+
+    let msg;
+    if(note >= 16) msg = "Excellent ! Tu maîtrises la matière. 🏆";
+    else if(note >= 12) msg = "Bien joué ! Continue comme ça. 👍";
+    else if(note >= 8) msg = "Pas mal, mais il faut réviser. 📚";
+    else msg = "Courage, révise et recommence ! 💪";
+
+    $("#quizZone").innerHTML = `
+      <div class="quiz-result">
+        <div class="quiz-result-mat">${escapeHtml(st.matiere)}</div>
+        <div class="quiz-result-note">${note}<span>/20</span></div>
+        <div class="quiz-result-detail">${st.score} bonne${st.score>1?"s":""} réponse${st.score>1?"s":""} sur ${total}</div>
+        <div class="quiz-result-msg">${msg}</div>
+        <div class="quiz-result-best">Meilleur score : <b>${best}/20</b></div>
+        <button class="btn" id="quizRestartBtn">Recommencer</button>
+        <button class="btn ghost" id="quizBackBtn">Changer de matière</button>
+      </div>
+    `;
+
+    $("#quizRestartBtn").addEventListener("click", () => startQuiz(st.matiere));
+    $("#quizBackBtn").addEventListener("click", () => {
+      quizState = null;
+      renderQuizSelector();
+    });
+  }
+
+  /* ============================================================
      NAVIGATION
      ============================================================ */
 
@@ -500,6 +757,7 @@
     renderToday();
     renderEvening();
     renderCourses("");
+    renderQuizSelector();
     $("#calcCount").textContent = store.calcCount || 0;
 
     // Rafraîchir l'onglet Aujourd'hui toutes les 30 s
