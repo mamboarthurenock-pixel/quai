@@ -39,6 +39,25 @@
 
   const DAY_NAMES = ["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
 
+  // Escales (bandeau défilant sous le cinéma)
+  const TRAILERS = [
+    {titre:"Le Port d'Abidjan", texte:"Le cœur logistique de la Côte d'Ivoire"},
+    {titre:"SITARAIL", texte:"Le rail qui relie Ouaga à Abidjan"},
+    {titre:"L'aérien FHB", texte:"Vite, loin, précieux"},
+    {titre:"La route", texte:"Le dernier kilomètre"},
+    {titre:"Les entrepôts", texte:"Là où tout commence"}
+  ];
+
+  // Conseils (bandeau défilant)
+  const TICKER_CONSEILS = [
+    "Révise 15 min par jour, pas 3 h la veille",
+    "Le BT en TLT se prépare dès maintenant",
+    "Utilise les cartes du jour dans Étude",
+    "Un cours importé = des questions en plus",
+    "Le Coach IA t'explique quand tu bloques",
+    "UNION · DISCIPLINE · MARASSE"
+  ];
+
   // Matières par niveau
   const SUBJECTS = {
     "3BT": [
@@ -865,6 +884,98 @@
     });
   }
 
+  /* ---------- ESCALES (marquee) ---------- */
+
+  const trailerCache = {};     // i -> url (mémoire)
+  const trailerPending = {};   // i -> true
+  let trailerQueue = Promise.resolve();
+
+  function trailerKey(i){
+    return "trailer:" + i;
+  }
+
+  function getTrailerCache(i){
+    if(trailerCache[i]) return trailerCache[i];
+    try{
+      const v = localStorage.getItem(trailerKey(i));
+      if(v){ trailerCache[i] = v; return v; }
+    }catch(e){}
+    return null;
+  }
+
+  function setTrailerCache(i, url){
+    trailerCache[i] = url;
+    try{ localStorage.setItem(trailerKey(i), url); }catch(e){}
+  }
+
+  function renderTrailers(){
+    const track = $("#trailersTrack");
+    if(!track) return;
+
+    // On duplique la liste pour une boucle infinie sans coupure
+    const items = TRAILERS.concat(TRAILERS);
+
+    track.innerHTML = items.map((t, k) => {
+      const i = k % TRAILERS.length;
+      const cached = getTrailerCache(i);
+      return `
+        <div class="trailer-card" data-idx="${i}">
+          <div class="trailer-img-wrap">
+            ${cached
+              ? `<img class="trailer-img" src="${escapeHtml(cached)}" alt="${escapeHtml(t.titre)}">`
+              : `<div class="trailer-img trailer-img-loading">⏳</div>`}
+          </div>
+          <div class="trailer-overlay">
+            <div class="trailer-title">${escapeHtml(t.titre)}</div>
+            <div class="trailer-text">${escapeHtml(t.texte)}</div>
+          </div>
+        </div>`;
+    }).join("");
+
+    // Chargement en arrière-plan, une image à la fois
+    TRAILERS.forEach((t, i) => {
+      if(getTrailerCache(i)) return;
+      if(trailerPending[i]) return;
+      trailerPending[i] = true;
+      trailerQueue = trailerQueue.then(() => genererTrailer(i, t))
+        .catch(() => {})
+        .finally(() => { trailerPending[i] = false; });
+    });
+  }
+
+  async function genererTrailer(i, t){
+    try{
+      const res = await fetch("/api/ai/image", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        credentials: "same-origin",
+        body: JSON.stringify({
+          prompt: "photo réaliste, " + t.titre + ", Côte d'Ivoire, logistique, 16:9"
+        })
+      });
+      let data = null;
+      try{ data = await res.json(); }catch(e){ data = null; }
+      if(!res.ok || !data || !data.ok || !data.image) return;
+      setTrailerCache(i, data.image);
+      // Remplace les placeholders de cette escale (2 occurrences)
+      $$(`.trailer-card[data-idx="${i}"] .trailer-img-wrap`).forEach(wrap => {
+        wrap.innerHTML = `<img class="trailer-img" src="${escapeHtml(data.image)}" alt="${escapeHtml(t.titre)}">`;
+      });
+    }catch(e){}
+  }
+
+  /* ---------- CONSEILS (ticker) ---------- */
+
+  function renderTicker(){
+    const track = $("#tickerTrack");
+    if(!track) return;
+    const items = TICKER_CONSEILS.concat(TICKER_CONSEILS);
+    track.innerHTML = items.map(c => `
+      <span class="ticker-item">${escapeHtml(c)}</span>
+      <span class="ticker-sep" aria-hidden="true">•</span>
+    `).join("");
+  }
+
   function renderToday(){
     const d = new Date();
     const dayIdx = d.getDay(); // 0 = dimanche
@@ -872,6 +983,8 @@
     const container = $("#todayContent");
 
     renderDefi();
+    renderTrailers();
+    renderTicker();
 
     if(!courses || courses.length === 0){
       container.innerHTML = `
