@@ -1235,6 +1235,173 @@
   }
 
   /* ============================================================
+     ASSISTANT — Coach IA + Voix off
+     ============================================================ */
+
+  let vitesseLecture = 1;
+  let chatBusy = false;
+
+  function speechAvailable(){
+    return typeof window !== "undefined" &&
+           "speechSynthesis" in window &&
+           typeof window.SpeechSynthesisUtterance === "function";
+  }
+
+  function lireTexte(texte){
+    if(!speechAvailable()){
+      alert("La synthèse vocale n'est pas disponible sur ce navigateur. Essaie Chrome, Edge ou Safari récent.");
+      return;
+    }
+    try{
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(texte);
+      u.lang = "fr-FR";
+      u.rate = vitesseLecture;
+      u.pitch = 1;
+      window.speechSynthesis.speak(u);
+    }catch(e){
+      alert("Impossible de lancer la lecture vocale.");
+    }
+  }
+
+  function scrollChatBottom(){
+    const box = $("#chatMessages");
+    if(box) box.scrollTop = box.scrollHeight;
+  }
+
+  function addChatMessage(role, texte){
+    const box = $("#chatMessages");
+    if(!box) return null;
+    const wrap = document.createElement("div");
+    wrap.className = "chat-msg " + (role === "user" ? "user" : "coach");
+
+    const bubble = document.createElement("div");
+    bubble.className = "chat-bubble";
+    bubble.textContent = texte;
+    wrap.appendChild(bubble);
+
+    if(role === "coach"){
+      const actions = document.createElement("div");
+      actions.className = "chat-actions";
+      const listen = document.createElement("button");
+      listen.className = "listen-btn";
+      listen.type = "button";
+      listen.innerHTML = "🔊 Écouter";
+      listen.addEventListener("click", () => lireTexte(texte));
+      actions.appendChild(listen);
+      wrap.appendChild(actions);
+    }
+
+    box.appendChild(wrap);
+    scrollChatBottom();
+    return wrap;
+  }
+
+  function addThinking(){
+    const box = $("#chatMessages");
+    if(!box) return null;
+    const wrap = document.createElement("div");
+    wrap.className = "chat-msg coach thinking";
+    wrap.innerHTML = '<div class="chat-bubble"><span class="dot"></span><span class="dot"></span><span class="dot"></span> Coach réfléchit…</div>';
+    box.appendChild(wrap);
+    scrollChatBottom();
+    return wrap;
+  }
+
+  function setChatBusy(v){
+    chatBusy = v;
+    const btn = $("#chatSend");
+    if(btn) btn.disabled = v;
+  }
+
+  async function envoyerMessage(){
+    if(chatBusy) return;
+    const input = $("#chatInput");
+    if(!input) return;
+    const message = input.value.trim();
+    if(!message) return;
+
+    addChatMessage("user", message);
+    input.value = "";
+    setChatBusy(true);
+    const thinking = addThinking();
+
+    try{
+      const res = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        credentials: "same-origin",
+        body: JSON.stringify({message})
+      });
+
+      let data = null;
+      try{ data = await res.json(); }catch(e){ data = null; }
+
+      if(thinking && thinking.parentNode) thinking.parentNode.removeChild(thinking);
+
+      if(!res.ok){
+        const errMsg = (data && (data.error || data.message)) || ("Erreur serveur (" + res.status + ")");
+        addChatMessage("coach", "⚠️ " + errMsg);
+        return;
+      }
+
+      const reply = (data && (data.reply || data.response || data.message || data.content)) || "";
+      if(!reply){
+        addChatMessage("coach", "⚠️ Réponse vide du serveur.");
+        return;
+      }
+      addChatMessage("coach", reply);
+    }catch(err){
+      if(thinking && thinking.parentNode) thinking.parentNode.removeChild(thinking);
+      addChatMessage("coach", "⚠️ Impossible de contacter le coach. Vérifie ta connexion.");
+    }finally{
+      setChatBusy(false);
+    }
+  }
+
+  function initAssistant(){
+    const input = $("#chatInput");
+    const send = $("#chatSend");
+    const stop = $("#chatStop");
+
+    if(send) send.addEventListener("click", envoyerMessage);
+
+    if(input){
+      input.addEventListener("keydown", (e) => {
+        if(e.key === "Enter" && !e.shiftKey){
+          e.preventDefault();
+          envoyerMessage();
+        }
+      });
+    }
+
+    $$(".vitesse-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const v = parseFloat(btn.dataset.vitesse);
+        if(!isNaN(v)) vitesseLecture = v;
+        $$(".vitesse-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+      });
+    });
+
+    if(stop){
+      stop.addEventListener("click", () => {
+        if(speechAvailable()) window.speechSynthesis.cancel();
+      });
+    }
+
+    if(!speechAvailable()){
+      const box = $("#chatMessages");
+      if(box){
+        const warn = document.createElement("div");
+        warn.className = "chat-msg coach";
+        warn.innerHTML = '<div class="chat-bubble">ℹ️ La synthèse vocale n\'est pas disponible sur ce navigateur. Le chat fonctionne, mais le bouton « Écouter » sera inactif.</div>';
+        box.appendChild(warn);
+      }
+    }
+  }
+
+  /* ============================================================
      NAVIGATION
      ============================================================ */
 
@@ -1261,6 +1428,7 @@
     renderCourses("");
     renderQuizSelector();
     renderGamesMenu();
+    initAssistant();
     $("#calcCount").textContent = store.calcCount || 0;
 
     // Rafraîchir l'onglet Aujourd'hui toutes les 30 s

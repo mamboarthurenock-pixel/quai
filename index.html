@@ -51,6 +51,10 @@
       <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="11" rx="4"/><path d="M7 12h3M8.5 10.5v3"/><circle cx="16" cy="11" r=".8" fill="currentColor"/><circle cx="18" cy="13.5" r=".8" fill="currentColor"/></svg></span>
       Jeux
     </button>
+    <button class="nav-btn" data-tab="assistant">
+      <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.9 9.9 0 0 1-3.8-.8L3 21l1.9-4.6A8.4 8.4 0 0 1 12 3.1a8.4 8.4 0 0 1 9 8.4z"/><path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01"/></svg></span>
+      Assistant
+    </button>
   </div>
 </nav>
 
@@ -216,6 +220,38 @@
   <section class="tab" id="tab-games">
     <p class="section-title">Jeux</p>
     <div id="gamesContent"></div>
+  </section>
+
+  <!-- ============ ASSISTANT ============ -->
+  <section class="tab" id="tab-assistant">
+    <div class="assistant-head">
+      <div class="assistant-title">
+        <span class="assistant-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.9 9.9 0 0 1-3.8-.8L3 21l1.9-4.6A8.4 8.4 0 0 1 12 3.1a8.4 8.4 0 0 1 9 8.4z"/><path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01"/></svg></span>
+        <div>
+          <h2>Coach IA — DeepSeek</h2>
+          <p>Pose ta question sur la filière Transport &amp; Logistique</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-card">
+      <div class="chat-toolbar">
+        <div class="vitesse-group" role="group" aria-label="Vitesse de lecture">
+          <span class="vitesse-label">Voix off</span>
+          <button class="vitesse-btn" data-vitesse="0.5">0,5×</button>
+          <button class="vitesse-btn active" data-vitesse="1">1×</button>
+          <button class="vitesse-btn" data-vitesse="2">2×</button>
+        </div>
+        <button class="stop-btn" id="chatStop" title="Arrêter la lecture" aria-label="Arrêter la lecture">⏹ Stop</button>
+      </div>
+
+      <div id="chatMessages" class="chat-messages" aria-live="polite"></div>
+
+      <div class="chat-input-wrap">
+        <textarea id="chatInput" rows="2" placeholder="Écris ta question… (Entrée pour envoyer, Maj+Entrée pour un saut de ligne)" autocomplete="off"></textarea>
+        <button id="chatSend" class="chat-send" title="Envoyer" aria-label="Envoyer">➤</button>
+      </div>
+    </div>
   </section>
 </main>
 </div>
