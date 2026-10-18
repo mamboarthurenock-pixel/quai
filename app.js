@@ -4083,52 +4083,53 @@
      INIT
      ============================================================ */
 
+  function safe(fn, nom){
+    try{ fn(); }catch(e){ if(window.console) console.warn("init " + nom + ":", e); }
+  }
+  function on(sel, ev, fn){
+    var el = $(sel); if(el) el.addEventListener(ev, fn);
+  }
+
   function init(){
-    updateHeader();
-    setInterval(updateHeader, 1000);
-
-    renderEscales();
-    renderConseil();
-    renderToday();
-    renderEvening();
-    renderCourses("");
-    loadCours();
-    renderQuizSelector();
-    renderGamesMenu();
-    initEtude();
-    initFlashcards();
-    initAnglais();
-    initAssistant();
-    initBienvenue();
-    renderSuivi();
-    $("#calcCount").textContent = store.calcCount || 0;
-
-    // Rafraîchir l'onglet Aujourd'hui toutes les 30 s
-    setInterval(renderToday, 30000);
-
-    // Navigation
-    $$(".nav-btn").forEach(btn => {
-      btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+    /* 1) NAVIGATION EN PREMIER — toujours fonctionnelle */
+    $$(".nav-btn").forEach(function(btn){
+      btn.addEventListener("click", function(){ switchTab(btn.dataset.tab); });
     });
 
-    // Bannière de l'onglet actif au démarrage
-    const activeTab = document.querySelector(".tab.active");
+    /* 2) Contrôles (protégés) */
+    safe(updateHeader, "header");
+    setInterval(function(){ safe(updateHeader, "header-tick"); }, 1000);
+    on("#searchInput", "input", function(e){ renderCourses(e.target.value); });
+    on("#calcBtn", "click", computeDuty);
+    on("#resetBtn", "click", resetDuty);
+    on("#convEurBtn", "click", function(){ convert(RATES.EUR, "EUR"); });
+    on("#convUsdBtn", "click", function(){ convert(RATES.USD, "USD"); });
+
+    /* 3) Rendu de chaque partie (chacun protégé : une erreur ne bloque pas le reste) */
+    safe(renderEscales, "escales");
+    safe(renderConseil, "conseil");
+    safe(renderToday, "today");
+    safe(renderEvening, "evening");
+    safe(function(){ renderCourses(""); }, "courses");
+    safe(loadCours, "loadCours");
+    safe(renderQuizSelector, "quiz");
+    safe(renderGamesMenu, "games");
+    safe(initEtude, "etude");
+    safe(initFlashcards, "flashcards");
+    safe(initAnglais, "anglais");
+    safe(initAssistant, "assistant");
+    safe(initBienvenue, "bienvenue");
+    safe(renderSuivi, "suivi");
+
+    var cc = $("#calcCount");
+    if(cc) cc.textContent = (store && store.calcCount) || 0;
+
+    setInterval(function(){ safe(renderToday, "today-tick"); }, 30000);
+
+    var activeTab = document.querySelector(".tab.active");
     if(activeTab && activeTab.id && activeTab.id.indexOf("tab-") === 0){
-      ensureBanner(activeTab.id.slice(4));
+      safe(function(){ ensureBanner(activeTab.id.slice(4)); }, "banner");
     }
-
-    // Recherche
-    $("#searchInput").addEventListener("input", (e) => {
-      renderCourses(e.target.value);
-    });
-
-    // Simulateur
-    $("#calcBtn").addEventListener("click", computeDuty);
-    $("#resetBtn").addEventListener("click", resetDuty);
-
-    // Convertisseur
-    $("#convEurBtn").addEventListener("click", () => convert(RATES.EUR, "EUR"));
-    $("#convUsdBtn").addEventListener("click", () => convert(RATES.USD, "USD"));
   }
 
   if(document.readyState === "loading"){
