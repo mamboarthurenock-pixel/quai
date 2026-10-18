@@ -349,6 +349,31 @@
 
   function pad(n){ return String(n).padStart(2,"0"); }
 
+  // Date locale au format AAAAMMJJ (seed déterministe)
+  function dateSeed(d){
+    const dt = d || new Date();
+    return String(dt.getFullYear()) + pad(dt.getMonth()+1) + pad(dt.getDate());
+  }
+
+  // PRNG déterministe (mulberry32) à partir d'une seed entière
+  function seededRandom(seed){
+    let a = seed >>> 0;
+    return function(){
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function hashString(s){
+    let h = 5381;
+    for(let i = 0; i < s.length; i++){
+      h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+    }
+    return h >>> 0;
+  }
+
   function toMinutes(hhmm){
     const [h,m] = hhmm.split(":").map(Number);
     return h*60 + m;
@@ -632,11 +657,177 @@
      ONGLET AUJOURD'HUI
      ============================================================ */
 
+  /* ---------- DÉFI DU JOUR ---------- */
+
+  const DEFI_KEY_PREFIX = "defi:";
+
+  function defiKey(){
+    return DEFI_KEY_PREFIX + dateSeed();
+  }
+
+  function defiDejaFait(){
+    try{ return localStorage.getItem(defiKey()) !== null; }catch(e){ return false; }
+  }
+
+  function defiResultat(){
+    try{
+      const raw = localStorage.getItem(defiKey());
+      return raw ? JSON.parse(raw) : null;
+    }catch(e){ return null; }
+  }
+
+  function defiSauver(res){
+    try{ localStorage.setItem(defiKey(), JSON.stringify(res)); }catch(e){}
+  }
+
+  // Sélectionne 3 questions déterministes pour la date, non vues en priorité
+  function defiQuestions(){
+    const seed = hashString("defi-" + dateSeed());
+    const rnd = seededRandom(seed);
+    const pool = QUIZ_BANK.slice();
+    // Mélange déterministe
+    for(let i = pool.length - 1; i > 0; i--){
+      const j = Math.floor(rnd() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    const fresh = pool.filter(q => !questionVue(questionId(q)));
+    const rest = pool.filter(q => questionVue(questionId(q)));
+    return fresh.concat(rest).slice(0, 3);
+  }
+
+  let defiState = null;
+
+  function renderDefi(){
+    const zone = $("#defiZone");
+    if(!zone) return;
+
+    if(defiDejaFait()){
+      const res = defiResultat();
+      const score = res && typeof res.score === "number" ? res.score : 0;
+      const total = res && typeof res.total === "number" ? res.total : 3;
+      zone.innerHTML = `
+        <div class="card defi-card defi-done">
+          <div class="defi-head">
+            <span class="defi-title">🎯 Défi du jour</span>
+            <span class="defi-badge">Déjà relevé aujourd'hui ✅</span>
+          </div>
+          <div class="defi-done-score">${score} / ${total}</div>
+          <div class="defi-done-msg">${escapeHtml(messageNote(Math.round((score/total)*20)))}</div>
+        </div>`;
+      return;
+    }
+
+    if(defiState && defiState.finished){
+      const score = defiState.score;
+      const total = defiState.questions.length;
+      zone.innerHTML = `
+        <div class="card defi-card defi-done">
+          <div class="defi-head">
+            <span class="defi-title">🎯 Défi du jour</span>
+            <span class="defi-badge">Terminé ✅</span>
+          </div>
+          <div class="defi-done-score">${score} / ${total}</div>
+          <div class="defi-done-msg">${escapeHtml(messageNote(Math.round((score/total)*20)))}</div>
+        </div>`;
+      return;
+    }
+
+    if(defiState && defiState.started){
+      renderDefiQuestion();
+      return;
+    }
+
+    zone.innerHTML = `
+      <div class="card defi-card">
+        <div class="defi-head">
+          <span class="defi-title">🎯 Défi du jour</span>
+          <span class="defi-badge">3 questions</span>
+        </div>
+        <div class="defi-desc">Relève le défi du jour : 3 questions choisies pour toi. Prêt ?</div>
+        <button class="btn" id="defiStartBtn">Relever le défi</button>
+      </div>`;
+    const btn = $("#defiStartBtn");
+    if(btn) btn.addEventListener("click", startDefi);
+  }
+
+  function startDefi(){
+    const questions = defiQuestions();
+    if(!questions.length) return;
+    defiState = {questions, index:0, score:0, answered:false, started:true, finished:false};
+    renderDefiQuestion();
+  }
+
+  function renderDefiQuestion(){
+    const zone = $("#defiZone");
+    const st = defiState;
+    const total = st.questions.length;
+    const q = st.questions[st.index];
+    const progress = Math.round((st.index / total) * 100);
+
+    zone.innerHTML = `
+      <div class="card defi-card">
+        <div class="defi-head">
+          <span class="defi-title">🎯 Défi du jour</span>
+          <span class="defi-badge">${st.index + 1} / ${total}</span>
+        </div>
+        <div class="defi-progress"><div class="defi-progress-bar" style="width:${progress}%"></div></div>
+        <div class="quiz-qnum">${escapeHtml(q.matiere)}</div>
+        <div class="quiz-question">${escapeHtml(q.q)}</div>
+        <div class="quiz-options">
+          ${q.options.map((opt,i) => `<button class="quiz-opt" data-idx="${i}">${escapeHtml(opt)}</button>`).join("")}
+        </div>
+        <div class="quiz-feedback" id="defiFeedback"></div>
+      </div>`;
+
+    $$("#defiZone .quiz-opt").forEach(btn => {
+      btn.addEventListener("click", () => answerDefi(parseInt(btn.dataset.idx, 10)));
+    });
+  }
+
+  function answerDefi(idx){
+    const st = defiState;
+    if(!st || st.answered) return;
+    st.answered = true;
+    const q = st.questions[st.index];
+    const correct = idx === q.bonne;
+    if(correct) st.score++;
+    marquerVue(questionId(q));
+    recordAnswer(q.matiere, correct, q);
+
+    $$("#defiZone .quiz-opt").forEach(btn => {
+      const i = parseInt(btn.dataset.idx, 10);
+      btn.disabled = true;
+      if(i === q.bonne) btn.classList.add("good");
+      else if(i === idx) btn.classList.add("bad");
+    });
+
+    const fb = $("#defiFeedback");
+    fb.classList.add("show");
+    fb.innerHTML = `
+      <div class="quiz-fb-title ${correct ? "ok" : "ko"}">${correct ? "✅ Bonne réponse !" : "❌ Raté"}</div>
+      <div class="quiz-fb-exp">${escapeHtml(q.explication)}</div>
+      <button class="btn quiz-next" id="defiNextBtn">${st.index + 1 < st.questions.length ? "Question suivante" : "Voir le résultat"}</button>
+    `;
+    $("#defiNextBtn").addEventListener("click", () => {
+      st.answered = false;
+      st.index++;
+      if(st.index >= st.questions.length){
+        st.finished = true;
+        defiSauver({score: st.score, total: st.questions.length, date: dateSeed()});
+        renderDefi();
+      } else {
+        renderDefiQuestion();
+      }
+    });
+  }
+
   function renderToday(){
     const d = new Date();
     const dayIdx = d.getDay(); // 0 = dimanche
     const courses = SCHEDULE[dayIdx];
     const container = $("#todayContent");
+
+    renderDefi();
 
     if(!courses || courses.length === 0){
       container.innerHTML = `
@@ -1020,6 +1211,7 @@
         <span>🆕 Jamais vues</span>
         <span><b>${nonVues}</b> / ${total}</span>
       </div>
+      <button class="btn exam-launch" id="examStartBtn">🎓 Mode examen — 30 questions · 20 min</button>
       <div class="quiz-selector">`;
     QUIZ_MATIERES.forEach(m => {
       const best = getBest(m);
@@ -1035,6 +1227,146 @@
 
     $$(".quiz-mat-btn").forEach(btn => {
       btn.addEventListener("click", () => startQuiz(btn.dataset.matiere));
+    });
+
+    const examBtn = $("#examStartBtn");
+    if(examBtn) examBtn.addEventListener("click", startExam);
+  }
+
+  /* ---------- MODE EXAMEN ---------- */
+
+  const EXAM_COUNT = 30;
+  const EXAM_DURATION = 20 * 60; // 20 minutes en secondes
+
+  let examState = null;
+
+  function startExam(){
+    const pool = orderByFreshness(QUIZ_BANK);
+    const questions = pool.slice(0, Math.min(EXAM_COUNT, pool.length));
+    examState = {
+      questions,
+      index: 0,
+      score: 0,
+      answered: false,
+      timeLeft: EXAM_DURATION,
+      timer: null,
+      over: false
+    };
+    renderExamQuestion();
+    examState.timer = setInterval(() => {
+      if(!examState || examState.over) return;
+      examState.timeLeft--;
+      const el = $("#examTimer");
+      if(el) el.textContent = fmtTime(examState.timeLeft);
+      if(examState.timeLeft <= 0){
+        endExam();
+      }
+    }, 1000);
+  }
+
+  function fmtTime(sec){
+    const s = Math.max(0, sec);
+    return pad(Math.floor(s / 60)) + ":" + pad(s % 60);
+  }
+
+  function renderExamQuestion(){
+    const zone = $("#quizZone");
+    const st = examState;
+    const total = st.questions.length;
+    const q = st.questions[st.index];
+    const progress = Math.round((st.index / total) * 100);
+
+    zone.innerHTML = `
+      <div class="exam-head">
+        <span class="exam-title">🎓 Mode examen</span>
+        <span class="exam-timer" id="examTimer">${fmtTime(st.timeLeft)}</span>
+      </div>
+      <div class="exam-progress"><div class="exam-progress-bar" style="width:${progress}%"></div></div>
+      <div class="quiz-card">
+        <div class="quiz-qnum">Question ${st.index + 1} / ${total} · ${escapeHtml(q.matiere)}</div>
+        <div class="quiz-question">${escapeHtml(q.q)}</div>
+        <div class="quiz-options">
+          ${q.options.map((opt,i) => `<button class="quiz-opt" data-idx="${i}">${escapeHtml(opt)}</button>`).join("")}
+        </div>
+        <div class="quiz-feedback" id="examFeedback"></div>
+      </div>
+      <button class="btn ghost" id="examQuitBtn" style="margin-top:12px">Abandonner l'examen</button>
+    `;
+
+    $$("#quizZone .quiz-opt").forEach(btn => {
+      btn.addEventListener("click", () => answerExam(parseInt(btn.dataset.idx, 10)));
+    });
+    const quit = $("#examQuitBtn");
+    if(quit) quit.addEventListener("click", () => {
+      if(confirm("Abandonner l'examen en cours ?")) endExam();
+    });
+  }
+
+  function answerExam(idx){
+    const st = examState;
+    if(!st || st.answered || st.over) return;
+    st.answered = true;
+    const q = st.questions[st.index];
+    const correct = idx === q.bonne;
+    if(correct) st.score++;
+    marquerVue(questionId(q));
+    recordAnswer(q.matiere, correct, q);
+
+    $$("#quizZone .quiz-opt").forEach(btn => {
+      const i = parseInt(btn.dataset.idx, 10);
+      btn.disabled = true;
+      if(i === q.bonne) btn.classList.add("good");
+      else if(i === idx) btn.classList.add("bad");
+    });
+
+    const fb = $("#examFeedback");
+    fb.classList.add("show");
+    fb.innerHTML = `
+      <div class="quiz-fb-title ${correct ? "ok" : "ko"}">${correct ? "✅ Bonne réponse !" : "❌ Raté"}</div>
+      <div class="quiz-fb-exp">${escapeHtml(q.explication)}</div>
+      <button class="btn quiz-next" id="examNextBtn">${st.index + 1 < st.questions.length ? "Question suivante" : "Terminer l'examen"}</button>
+    `;
+    $("#examNextBtn").addEventListener("click", () => {
+      st.answered = false;
+      st.index++;
+      if(st.index >= st.questions.length){
+        endExam();
+      } else {
+        renderExamQuestion();
+      }
+    });
+  }
+
+  function endExam(){
+    const st = examState;
+    if(!st || st.over) return;
+    st.over = true;
+    if(st.timer) clearInterval(st.timer);
+
+    const total = st.questions.length;
+    const answered = st.index + (st.answered ? 1 : 0);
+    const bonnes = st.score;
+    const mauvaises = Math.max(0, answered - bonnes);
+    const note = total ? Math.round((bonnes / total) * 20 * 10) / 10 : 0;
+
+    $("#quizZone").innerHTML = `
+      <div class="quiz-result exam-result">
+        <div class="quiz-result-mat">Mode examen</div>
+        <div class="quiz-result-note">${note}<span>/20</span></div>
+        <div class="exam-stats">
+          <div class="exam-stat"><span class="exam-stat-k">Bonnes</span><span class="exam-stat-v ok">${bonnes}</span></div>
+          <div class="exam-stat"><span class="exam-stat-k">Mauvaises</span><span class="exam-stat-v ko">${mauvaises}</span></div>
+          <div class="exam-stat"><span class="exam-stat-k">Temps restant</span><span class="exam-stat-v">${fmtTime(st.timeLeft)}</span></div>
+        </div>
+        <div class="quiz-result-msg">${escapeHtml(messageNote(note))}</div>
+        <button class="btn" id="examReplayBtn">Rejouer</button>
+        <button class="btn ghost" id="examBackBtn">Retour au quiz</button>
+      </div>
+    `;
+    $("#examReplayBtn").addEventListener("click", startExam);
+    $("#examBackBtn").addEventListener("click", () => {
+      examState = null;
+      renderQuizSelector();
     });
   }
 
