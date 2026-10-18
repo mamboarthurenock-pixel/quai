@@ -1247,11 +1247,10 @@
            typeof window.SpeechSynthesisUtterance === "function";
   }
 
-  function lireTexte(texte){
-    if(!speechAvailable()){
-      alert("La synthèse vocale n'est pas disponible sur ce navigateur. Essaie Chrome, Edge ou Safari récent.");
-      return;
-    }
+  let _audioEnCours = null;
+
+  function _voixNavigateur(texte){
+    if(!speechAvailable()) return false;
     try{
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(texte);
@@ -1259,9 +1258,42 @@
       u.rate = vitesseLecture;
       u.pitch = 1;
       window.speechSynthesis.speak(u);
+      return true;
+    }catch(e){ return false; }
+  }
+
+  /* Voix off : Piper (vraie voix française côté serveur), repli navigateur. */
+  async function lireTexte(texte){
+    if(!texte || !texte.trim()) return;
+    try{
+      if(_audioEnCours){ try{ _audioEnCours.pause(); }catch(e){} _audioEnCours = null; }
+      if(speechAvailable()) window.speechSynthesis.cancel();
+
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        credentials: "same-origin",
+        body: JSON.stringify({text: texte, speed: vitesseLecture})
+      });
+      let data = null;
+      try{ data = await res.json(); }catch(e){ data = null; }
+
+      if(res.ok && data && data.ok && data.audio){
+        _audioEnCours = new Audio(data.audio);
+        _audioEnCours.play().catch(()=>{});
+        return;
+      }
+      if(!_voixNavigateur(texte)){
+        alert((data && data.error) || "Voix indisponible.");
+      }
     }catch(e){
-      alert("Impossible de lancer la lecture vocale.");
+      if(!_voixNavigateur(texte)) alert("Impossible de lancer la lecture vocale.");
     }
+  }
+
+  function stopVoix(){
+    if(_audioEnCours){ try{ _audioEnCours.pause(); }catch(e){} _audioEnCours = null; }
+    if(speechAvailable()) window.speechSynthesis.cancel();
   }
 
   function scrollChatBottom(){
@@ -1345,7 +1377,7 @@
         return;
       }
 
-      const reply = (data && (data.reply || data.response || data.message || data.content)) || "";
+      const reply = (data && (data.answer || data.reply || data.response || data.message || data.content)) || "";
       if(!reply){
         addChatMessage("coach", "⚠️ Réponse vide du serveur.");
         return;
@@ -1385,9 +1417,7 @@
     });
 
     if(stop){
-      stop.addEventListener("click", () => {
-        if(speechAvailable()) window.speechSynthesis.cancel();
-      });
+      stop.addEventListener("click", () => { stopVoix(); });
     }
 
     if(!speechAvailable()){
