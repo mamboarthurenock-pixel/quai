@@ -867,6 +867,82 @@
     });
   }
 
+  // Message d'encouragement selon la note /20
+  function encouragement(note){
+    if(note < 8) return "Courage, on révise ensemble 💪";
+    if(note <= 14) return "Tu progresses, continue comme ça 🌱";
+    return "Bravo Mambo ! 🏆";
+  }
+
+  // Cherche le texte d'un cours lié à la matière (si disponible)
+  function coursPourMatiere(matiere){
+    try{
+      if(!coursState || !Array.isArray(coursState.items)) return "";
+      const m = String(matiere || "").toLowerCase();
+      const found = coursState.items.find(c =>
+        String(c.matiere || "").toLowerCase().includes(m) ||
+        m.includes(String(c.matiere || "").toLowerCase())
+      );
+      if(!found) return "";
+      return String(found.texte || "").slice(0, 1200);
+    }catch(e){ return ""; }
+  }
+
+  // Construit le prompt selon le niveau demandé
+  function promptExplication(niveau, q, mauvaise, coursTxt){
+    const bonne = q.options[q.bonne];
+    const base =
+      "Question : " + q.q + "\n" +
+      "Mauvaise réponse de l'élève : " + mauvaise + "\n" +
+      "Bonne réponse : " + bonne + "\n" +
+      (coursTxt ? "Extrait du cours : " + coursTxt + "\n" : "") +
+      "Explication officielle : " + q.explication + "\n\n";
+    if(niveau === "simple"){
+      return base + "Explique en 2 phrases très simples, avec bienveillance, pourquoi la bonne réponse est correcte.";
+    }
+    if(niveau === "detaille"){
+      return base + "Explique en détail, étape par étape, en t'appuyant sur le cours. Sois pédagogue et encourageant.";
+    }
+    return base + "Donne un exemple concret du port d'Abidjan pour illustrer la bonne réponse.";
+  }
+
+  // Affiche la réponse du coach dans la carte quiz
+  function afficheExplication(texte){
+    const box = $("#quizExplainOut");
+    if(!box) return;
+    box.innerHTML = `<div class="correction-douce">💡 ${escapeHtml(texte)}</div>`;
+  }
+
+  async function expliquerQuestion(niveau){
+    const st = quizState;
+    if(!st) return;
+    const q = st.questions[st.index];
+    const mauvaise = st.lastWrong || "";
+    const coursTxt = coursPourMatiere(q.matiere);
+    const box = $("#quizExplainOut");
+    if(box) box.innerHTML = `<div class="correction-douce">⏳ Le coach réfléchit…</div>`;
+
+    try{
+      const res = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        credentials: "same-origin",
+        body: JSON.stringify({message: promptExplication(niveau, q, mauvaise, coursTxt)})
+      });
+      let data = null;
+      try{ data = await res.json(); }catch(e){ data = null; }
+      if(!res.ok){
+        const msg = (data && (data.error || data.message)) || ("Erreur serveur (" + res.status + ")");
+        afficheExplication("⚠️ " + msg);
+        return;
+      }
+      const reply = (data && (data.answer || data.reply || data.response || data.message || data.content)) || "";
+      afficheExplication(reply || "Pas de réponse du coach.");
+    }catch(e){
+      afficheExplication("⚠️ Impossible de contacter le coach.");
+    }
+  }
+
   function answerQuiz(idx){
     const st = quizState;
     if(!st || st.answered) return;
@@ -875,6 +951,7 @@
     const q = st.questions[st.index];
     const correct = idx === q.bonne;
     if(correct) st.score++;
+    else st.lastWrong = q.options[idx];
     marquerVue(questionId(q));
 
     $$(".quiz-opt").forEach(btn => {
@@ -885,16 +962,42 @@
     });
 
     const fb = $("#quizFeedback");
+    const bonne = q.options[q.bonne];
+    const titre = correct
+      ? "✅ Bonne réponse !"
+      : (Math.random() < 0.5
+          ? "Presque ! La bonne réponse est : " + escapeHtml(bonne)
+          : "Pas encore, mais tu progresses. La bonne réponse : " + escapeHtml(bonne));
+
     fb.innerHTML = `
-      <div class="quiz-fb-title ${correct ? "ok" : "ko"}">
-        ${correct ? "✅ Bonne réponse !" : "❌ Mauvaise réponse"}
-      </div>
+      <div class="quiz-fb-title ${correct ? "ok" : "ko"}">${titre}</div>
       <div class="quiz-fb-exp">${escapeHtml(q.explication)}</div>
+      ${correct ? "" : `
+        <button class="btn explique-btn" id="quizExplainBtn">💡 Explique-moi</button>
+        <div class="explique-niveaux" id="quizExplainNiveaux" style="display:none">
+          <button class="explique-niveau" data-niveau="simple">Simple</button>
+          <button class="explique-niveau" data-niveau="detaille">Détaillé</button>
+          <button class="explique-niveau" data-niveau="exemple">Exemple</button>
+        </div>
+        <div id="quizExplainOut"></div>
+      `}
       <button class="btn quiz-next" id="quizNextBtn">
         ${st.index + 1 < st.questions.length ? "Question suivante" : "Voir le résultat"}
       </button>
     `;
     fb.classList.add("show");
+
+    if(!correct){
+      const exBtn = $("#quizExplainBtn");
+      const niveaux = $("#quizExplainNiveaux");
+      if(exBtn) exBtn.addEventListener("click", () => {
+        if(niveaux) niveaux.style.display = "flex";
+        expliquerQuestion("simple");
+      });
+      $$(".explique-niveau").forEach(b => {
+        b.addEventListener("click", () => expliquerQuestion(b.dataset.niveau));
+      });
+    }
 
     $("#quizNextBtn").addEventListener("click", () => {
       st.answered = false;
@@ -914,18 +1017,14 @@
     setBest(st.matiere, note);
     const best = getBest(st.matiere);
 
-    let msg;
-    if(note >= 16) msg = "Excellent ! Tu maîtrises la matière. 🏆";
-    else if(note >= 12) msg = "Bien joué ! Continue comme ça. 👍";
-    else if(note >= 8) msg = "Pas mal, mais il faut réviser. 📚";
-    else msg = "Courage, révise et recommence ! 💪";
+    const msg = encouragement(note);
 
     $("#quizZone").innerHTML = `
       <div class="quiz-result">
         <div class="quiz-result-mat">${escapeHtml(st.matiere)}</div>
         <div class="quiz-result-note">${note}<span>/20</span></div>
         <div class="quiz-result-detail">${st.score} bonne${st.score>1?"s":""} réponse${st.score>1?"s":""} sur ${total}</div>
-        <div class="quiz-result-msg">${msg}</div>
+        <div class="encouragement">${escapeHtml(msg)}</div>
         <div class="quiz-result-best">Meilleur score : <b>${best}/20</b></div>
         <button class="btn" id="quizRestartBtn">Recommencer</button>
         <button class="btn ghost" id="quizBackBtn">Changer de matière</button>
