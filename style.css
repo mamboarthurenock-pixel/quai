@@ -35,9 +35,34 @@
     background-image:
       radial-gradient(900px 500px at 100% 0%,rgba(45,212,191,.10),transparent 60%),
       radial-gradient(900px 600px at 0% 100%,rgba(59,130,246,.10),transparent 60%),
-      linear-gradient(180deg,#070c17 0%,#0a1220 100%);
+      linear-gradient(120deg,#070c17 0%,#0a1220 25%,#0d1a2e 50%,#0a1220 75%,#070c17 100%);
+    background-size:100% 100%,100% 100%,400% 400%;
     background-attachment:fixed;
+    animation:shiftBg 22s linear infinite;
     overflow-x:hidden;
+  }
+  /* Couche décorative de particules lumineuses */
+  .particles{
+    position:fixed;inset:0;z-index:0;pointer-events:none;
+    opacity:.12;
+    background-image:
+      radial-gradient(1.5px 1.5px at 20% 80%,rgba(45,212,191,.9),transparent 60%),
+      radial-gradient(1.5px 1.5px at 70% 60%,rgba(45,212,191,.8),transparent 60%),
+      radial-gradient(1px 1px at 40% 30%,rgba(147,164,196,.9),transparent 60%),
+      radial-gradient(1.5px 1.5px at 85% 20%,rgba(45,212,191,.7),transparent 60%),
+      radial-gradient(1px 1px at 10% 50%,rgba(147,164,196,.8),transparent 60%),
+      radial-gradient(1.5px 1.5px at 55% 90%,rgba(45,212,191,.85),transparent 60%);
+    background-size:100% 100%;
+    animation:floatUp 40s linear infinite;
+  }
+  @keyframes shiftBg{
+    0%{background-position:0% 50%,0% 50%,0% 50%}
+    100%{background-position:0% 50%,0% 50%,200% 50%}
+  }
+  @keyframes floatUp{
+    0%{transform:translateY(0);opacity:.12}
+    50%{opacity:.18}
+    100%{transform:translateY(-40px);opacity:.12}
   }
   .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
 
@@ -73,7 +98,31 @@
     -webkit-background-clip:text;background-clip:text;
     -webkit-text-fill-color:transparent;
     animation:shimmerText 8s linear infinite;
+    text-shadow:0 0 18px rgba(45,212,191,.55),0 0 40px rgba(45,212,191,.25);
   }
+  /* Titre hero avec lueur néon + shimmer */
+  .hero-title{
+    position:relative;display:inline-block;
+    text-shadow:0 0 18px rgba(45,212,191,.55),0 0 40px rgba(45,212,191,.25);
+  }
+  .hero-title::after{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.55) 50%,transparent 70%);
+    background-size:200% 100%;
+    -webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;
+    animation:shimmer 6s linear infinite;
+  }
+  /* Classe utilitaire de lueur */
+  .glow{
+    box-shadow:0 0 18px rgba(45,212,191,.45),0 0 40px rgba(45,212,191,.2);
+  }
+  /* Révélation progressive */
+  .reveal{
+    opacity:0;transform:translateY(12px);
+    transition:opacity .6s ease,transform .6s cubic-bezier(.2,.7,.2,1);
+  }
+  .reveal.active{opacity:1;transform:none}
   .head-titles .sub{font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:2px}
   .clock{color:var(--accent);font-weight:600;text-shadow:0 0 12px rgba(45,212,191,.5)}
   .dot-sep{opacity:.4}
@@ -121,15 +170,15 @@
   }
 
   .card{
-    background:var(--card);
-    backdrop-filter:blur(12px) saturate(140%);
-    -webkit-backdrop-filter:blur(12px) saturate(140%);
-    border:1px solid var(--line);
+    background:rgba(15,23,41,.55);
+    backdrop-filter:blur(14px) saturate(1.2);
+    -webkit-backdrop-filter:blur(14px);
+    border:1px solid rgba(45,212,191,.18);
     border-radius:var(--radius);
     padding:18px;
     margin-bottom:16px;
     box-shadow:var(--shadow);
-    transition:transform .3s cubic-bezier(.2,.7,.2,1),box-shadow .3s,border-color .3s;
+    transition:transform 240ms cubic-bezier(.2,.7,.2,1),box-shadow 240ms,border-color 240ms;
     position:relative;
     overflow:hidden;
   }
@@ -137,11 +186,19 @@
     content:"";position:absolute;inset:0;pointer-events:none;
     background:radial-gradient(600px 200px at 0% 0%,rgba(45,212,191,.06),transparent 60%);
   }
-  .card:hover{
-    transform:translateY(-3px);
-    border-color:rgba(45,212,191,.35);
-    box-shadow:var(--shadow),0 0 30px -8px rgba(45,212,191,.35);
+  /* Liseré lumineux en dégradé, révélé au survol */
+  .card::after{
+    content:"";position:absolute;left:0;right:0;top:0;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(45,212,191,.5),transparent);
+    opacity:0;transition:opacity 240ms ease;
+    pointer-events:none;
   }
+  .card:hover{
+    transform:translateY(-4px);
+    border-color:rgba(45,212,191,.35);
+    box-shadow:0 20px 40px -20px rgba(45,212,191,.45),var(--shadow);
+  }
+  .card:hover::after{opacity:1}
 
   /* ---------- Hero ---------- */
   .hero{
@@ -234,6 +291,11 @@
   }
   .stop.current .ring{
     background:var(--accent);border-color:var(--accent);
+    box-shadow:
+      0 0 0 4px rgba(45,212,191,.18),
+      0 0 12px 2px rgba(45,212,191,.7),
+      0 0 28px 6px rgba(45,212,191,.35),
+      0 0 48px 10px rgba(45,212,191,.15);
     animation:pulseGlow 2.2s ease-in-out infinite;
   }
   .stop.current .subject{color:var(--accent);text-shadow:0 0 14px rgba(45,212,191,.5)}
@@ -472,4 +534,9 @@
       scroll-behavior:auto !important;
     }
     .metro-rail::after{display:none}
+    body{animation:none}
+    .particles{animation:none;display:none}
+    .hero-title::after{animation:none;display:none}
+    .card:hover{transform:none}
+    .reveal{opacity:1;transform:none;transition:none}
   }
