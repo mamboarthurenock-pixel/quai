@@ -717,6 +717,107 @@
   }
 
   /* ============================================================
+     ESCALES + CONSEILS (onglet Aujourd'hui)
+     ============================================================ */
+
+  const TRAILERS = [
+    {titre:"Le Port d'Abidjan", sub:"Le cœur logistique de la Côte d'Ivoire"},
+    {titre:"SITARAIL", sub:"Le rail qui relie Ouaga à Abidjan"},
+    {titre:"L'aérien FHB", sub:"Vite, loin, précieux"},
+    {titre:"La route", sub:"Le dernier kilomètre"},
+    {titre:"Les entrepôts", sub:"Là où tout commence"}
+  ];
+
+  const CONSEILS = [
+    "Révise 15 min par jour, pas 3 h la veille",
+    "Le BT en TLT se prépare dès maintenant",
+    "Utilise les cartes du jour dans Étude",
+    "Un cours importé = des questions en plus",
+    "Le Coach IA t'explique quand tu bloques",
+    "UNION · DISCIPLINE · MARASSE"
+  ];
+
+  function trailerKey(i){
+    return "trailer:" + i;
+  }
+
+  function getTrailerCache(i){
+    try{ return localStorage.getItem(trailerKey(i)); }catch(e){ return null; }
+  }
+
+  function setTrailerCache(i, url){
+    try{ localStorage.setItem(trailerKey(i), url); }catch(e){}
+  }
+
+  let trailerQueue = Promise.resolve();
+
+  function renderTrailers(){
+    const track = $("#trailersTrack");
+    if(!track) return;
+
+    // On duplique la liste pour une boucle infinie fluide
+    const items = TRAILERS.concat(TRAILERS);
+
+    track.innerHTML = items.map((t, idx) => {
+      const i = idx % TRAILERS.length;
+      const cached = getTrailerCache(i);
+      return `
+        <div class="trailer-card" data-trailer="${i}">
+          ${cached
+            ? `<img src="${escapeHtml(cached)}" alt="${escapeHtml(t.titre)}" class="loaded">`
+            : `<div class="trailer-loading">🎬</div>`}
+          <div class="trailer-overlay">
+            <div class="trailer-title">${escapeHtml(t.titre)}</div>
+            <div class="trailer-sub">${escapeHtml(t.sub)}</div>
+          </div>
+        </div>`;
+    }).join("");
+
+    // Chargement en file d'attente (1 à la fois) des images manquantes
+    TRAILERS.forEach((t, i) => {
+      if(getTrailerCache(i)) return;
+      trailerQueue = trailerQueue
+        .then(() => genererTrailer(i, t.titre))
+        .catch(() => {});
+    });
+  }
+
+  async function genererTrailer(i, titre){
+    const prompt = "photo réaliste, " + titre + ", Côte d'Ivoire, logistique, 16:9";
+    try{
+      const res = await fetch("/api/ai/image", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        credentials: "same-origin",
+        body: JSON.stringify({prompt})
+      });
+      let data = null;
+      try{ data = await res.json(); }catch(e){ data = null; }
+      if(!res.ok || !data || !data.ok || !data.image) return;
+      setTrailerCache(i, data.image);
+      // Met à jour toutes les cartes correspondantes (dupliquées)
+      $$(`.trailer-card[data-trailer="${i}"]`).forEach(card => {
+        const loading = card.querySelector(".trailer-loading");
+        if(loading) loading.remove();
+        if(!card.querySelector("img")){
+          const img = document.createElement("img");
+          img.alt = titre;
+          img.addEventListener("load", () => img.classList.add("loaded"));
+          img.src = data.image;
+          card.insertBefore(img, card.firstChild);
+        }
+      });
+    }catch(e){}
+  }
+
+  function renderTicker(){
+    const track = $("#tickerTrack");
+    if(!track) return;
+    const items = CONSEILS.concat(CONSEILS);
+    track.innerHTML = items.map(c => `<span class="ticker-item">${escapeHtml(c)}</span>`).join("");
+  }
+
+  /* ============================================================
      ONGLET AUJOURD'HUI
      ============================================================ */
 
@@ -3993,6 +4094,8 @@
     updateHeader();
     setInterval(updateHeader, 1000);
 
+    renderTrailers();
+    renderTicker();
     renderToday();
     renderEvening();
     renderCourses("");
