@@ -1334,6 +1334,56 @@
 
   const WHEEL_MATIERES = Object.keys(WHEEL_QUESTIONS);
 
+  /* ---------- Données des nouveaux jeux ---------- */
+
+  // 1. Match des taux
+  const TAUX_PAIRS = [
+    {taxe:"DD",  taux:"10 %"},
+    {taxe:"RSTA",taux:"1 %"},
+    {taxe:"TVA", taux:"18 %"},
+    {taxe:"PCS", taux:"0,5 %"},
+    {taxe:"PCC", taux:"0,8 %"}
+  ];
+
+  // 2. Classer les incoterms
+  const INCOTERMS = [
+    {code:"EXW", tas:"peu"},
+    {code:"FCA", tas:"peu"},
+    {code:"FOB", tas:"peu"},
+    {code:"CIF", tas:"tout"},
+    {code:"DAP", tas:"tout"},
+    {code:"DDP", tas:"tout"}
+  ];
+
+  // 3. Qui veut gagner (difficulté croissante)
+  const QVG_QUESTIONS = [
+    {q:"Que signifie DD en douane ?",
+     options:["Droit de Douane","Déclaration Directe","Document Douanier","Droit Divers"], bonne:0,
+     explication:"DD = Droit de Douane, taxe perçue à l'importation."},
+    {q:"La valeur en douane est calculée sur la base :",
+     options:["FOB","CIF (FOB + fret + assurance)","Prix de détail","La TVA"], bonne:1,
+     explication:"La valeur en douane est la valeur CIF."},
+    {q:"Quel est le taux de la TVA à l'importation en Côte d'Ivoire ?",
+     options:["10 %","1 %","18 %","0,5 %"], bonne:2,
+     explication:"La TVA à l'importation est de 18 %."},
+    {q:"Quel sigle désigne le système de dédouanement automatisé ?",
+     options:["GUCE","SYDAM","PAA","BSC"], bonne:1,
+     explication:"SYDAM = Système de Dédouanement Automatisé des Marchandises."},
+    {q:"Dans un incoterm DDP, qui paie les droits de douane à l'importation ?",
+     options:["L'acheteur","Le vendeur","Le transporteur","Le transitaire"], bonne:1,
+     explication:"En DDP, le vendeur paie tout, y compris les droits de douane."}
+  ];
+
+  // 5. Memory : paires sigle <-> signification
+  const MEMORY_PAIRS = [
+    {sigle:"GDOD", def:"Gestion Documentaire et Organisation Douanière"},
+    {sigle:"TEC",  def:"Tarif Extérieur Commun"},
+    {sigle:"DAU",  def:"Déclaration en Détail des Marchandises"},
+    {sigle:"RSTA", def:"Redevance Statistique et d'Assistance Technique"},
+    {sigle:"CIF",  def:"Coût, Assurance et Fret"},
+    {sigle:"FOB",  def:"Free On Board (Franco à Bord)"}
+  ];
+
   // Couleurs de la roue (cohérentes avec le design)
   const WHEEL_COLORS = [
     "#22d3ee","#a78bfa","#f472b6","#fbbf24",
@@ -1346,12 +1396,14 @@
   const GAMES_KEY = "lpcc_games_v1";
 
   function loadGames(){
+    const def = {wheelScore:0, penduScore:0, courseBest:0,
+                 matchBest:0, incotermBest:0, qvgBest:0, duelBest:0, memoryBest:0};
     try{
       const raw = localStorage.getItem(GAMES_KEY);
-      if(!raw) return {wheelScore:0, penduScore:0, courseBest:0};
-      return Object.assign({wheelScore:0, penduScore:0, courseBest:0}, JSON.parse(raw));
+      if(!raw) return def;
+      return Object.assign(def, JSON.parse(raw));
     }catch(e){
-      return {wheelScore:0, penduScore:0, courseBest:0};
+      return def;
     }
   }
 
@@ -1365,6 +1417,11 @@
   let wheelState = null;
   let penduState = null;
   let courseState = null;
+  let matchState = null;
+  let incotermState = null;
+  let qvgState = null;
+  let duelState = null;
+  let memoryState = null;
 
   /* ---------- Menu des jeux ---------- */
 
@@ -1396,6 +1453,46 @@
             <div class="game-best">Record : <b>${gamesStore.courseBest}</b></div>
           </div>
         </button>
+        <button class="game-card" data-game="match">
+          <div class="game-ico">🧩</div>
+          <div class="game-info">
+            <div class="game-name">Match des taux</div>
+            <div class="game-desc">Relie chaque taxe à son taux.</div>
+            <div class="game-best">Record : <b>${gamesStore.matchBest || 0}</b></div>
+          </div>
+        </button>
+        <button class="game-card" data-game="incoterm">
+          <div class="game-ico">📦</div>
+          <div class="game-info">
+            <div class="game-name">Classer les incoterms</div>
+            <div class="game-desc">Qui paie quoi ? Range les 6 incoterms.</div>
+            <div class="game-best">Record : <b>${gamesStore.incotermBest || 0}</b></div>
+          </div>
+        </button>
+        <button class="game-card" data-game="qvg">
+          <div class="game-ico">🎯</div>
+          <div class="game-info">
+            <div class="game-name">Qui veut gagner</div>
+            <div class="game-desc">5 questions, 3 jokers, grimpe les paliers.</div>
+            <div class="game-best">Record : <b>${gamesStore.qvgBest || 0}</b></div>
+          </div>
+        </button>
+        <button class="game-card" data-game="duel">
+          <div class="game-ico">⚔️</div>
+          <div class="game-info">
+            <div class="game-name">Duel contre l'IA</div>
+            <div class="game-desc">5 questions, toi contre le coach.</div>
+            <div class="game-best">Record : <b>${gamesStore.duelBest || 0}</b></div>
+          </div>
+        </button>
+        <button class="game-card" data-game="memory">
+          <div class="game-ico">🃏</div>
+          <div class="game-info">
+            <div class="game-name">Memory des sigles</div>
+            <div class="game-desc">Retrouve les paires sigle / signification.</div>
+            <div class="game-best">Record : <b>${gamesStore.memoryBest || 0}</b></div>
+          </div>
+        </button>
       </div>
       <button class="btn ghost" id="gamesBackBtn" style="margin-top:16px">← Retour au menu</button>
     `;
@@ -1405,6 +1502,11 @@
         if(g === "wheel") startWheel();
         else if(g === "pendu") startPendu();
         else if(g === "course") startCourse();
+        else if(g === "match") startMatch();
+        else if(g === "incoterm") startIncoterm();
+        else if(g === "qvg") startQvg();
+        else if(g === "duel") startDuel();
+        else if(g === "memory") startMemory();
       });
     });
     const back = $("#gamesBackBtn");
@@ -1764,6 +1866,534 @@
     `;
     $("#courseRestartBtn").addEventListener("click", startCourse);
     $("#gamesBackBtn").addEventListener("click", renderGamesMenu);
+  }
+
+  /* ---------- JEU 4 : MATCH DES TAUX ---------- */
+
+  function startMatch(){
+    matchState = {
+      taxes: shuffle(TAUX_PAIRS.map(p => p.taxe)),
+      taux: shuffle(TAUX_PAIRS.map(p => p.taux)),
+      selectedTaxe: null,
+      matched: new Set(),
+      score: 0,
+      errors: 0,
+      over: false
+    };
+    renderMatch();
+  }
+
+  function renderMatch(){
+    const st = matchState;
+    const zone = $("#gamesContent");
+    zone.innerHTML = `
+      <div class="game-head">
+        <span class="game-title">🧩 Match des taux</span>
+        <span class="game-score">Score : <b>${st.score}</b> / ${TAUX_PAIRS.length}</span>
+      </div>
+      <div class="match-grid">
+        <div class="match-col">
+          ${st.taxes.map(t => {
+            const done = st.matched.has(t);
+            const sel = st.selectedTaxe === t;
+            return `<button class="match-item ${done ? "done" : ""} ${sel ? "sel" : ""}" data-type="taxe" data-val="${escapeHtml(t)}" ${done ? "disabled" : ""}>${escapeHtml(t)}</button>`;
+          }).join("")}
+        </div>
+        <div class="match-col">
+          ${st.taux.map(t => {
+            const done = TAUX_PAIRS.some(p => p.taux === t && st.matched.has(p.taxe));
+            return `<button class="match-item ${done ? "done" : ""}" data-type="taux" data-val="${escapeHtml(t)}" ${done ? "disabled" : ""}>${escapeHtml(t)}</button>`;
+          }).join("")}
+        </div>
+      </div>
+      <div id="matchFeedback"></div>
+      <button class="btn ghost" id="gamesBackBtn" style="margin-top:16px">← Retour au menu</button>
+    `;
+
+    $$(".match-item").forEach(btn => {
+      btn.addEventListener("click", () => clickMatch(btn.dataset.type, btn.dataset.val));
+    });
+    $("#gamesBackBtn").addEventListener("click", renderGamesMenu);
+  }
+
+  function clickMatch(type, val){
+    const st = matchState;
+    if(st.over) return;
+    if(type === "taxe"){
+      st.selectedTaxe = val;
+      renderMatch();
+      return;
+    }
+    if(!st.selectedTaxe) return;
+    const pair = TAUX_PAIRS.find(p => p.taxe === st.selectedTaxe);
+    const fb = $("#matchFeedback");
+    if(pair && pair.taux === val){
+      st.matched.add(st.selectedTaxe);
+      st.score++;
+      st.selectedTaxe = null;
+      if(fb) fb.innerHTML = `<div class="quiz-fb-title ok">✅ Bonne paire !</div>`;
+      if(st.matched.size === TAUX_PAIRS.length){
+        st.over = true;
+        if(st.score > (gamesStore.matchBest || 0)){
+          gamesStore.matchBest = st.score;
+          saveGames(gamesStore);
+        }
+        renderMatch();
+        $("#matchFeedback").innerHTML = `
+          <div class="quiz-result" style="margin-top:16px">
+            <div class="quiz-result-mat">Match des taux</div>
+            <div class="quiz-result-note">${st.score}<span>/${TAUX_PAIRS.length}</span></div>
+            <div class="quiz-result-detail">${st.errors} erreur${st.errors > 1 ? "s" : ""}</div>
+            <button class="btn" id="matchReplayBtn">Rejouer</button>
+          </div>`;
+        $("#matchReplayBtn").addEventListener("click", startMatch);
+        return;
+      }
+      renderMatch();
+      $("#matchFeedback").innerHTML = `<div class="quiz-fb-title ok">✅ Bonne paire !</div>`;
+    } else {
+      st.errors++;
+      st.selectedTaxe = null;
+      renderMatch();
+      $("#matchFeedback").innerHTML = `<div class="correction-douce">Presque ! Réessaie, tu vas trouver 🤔</div>`;
+    }
+  }
+
+  /* ---------- JEU 5 : CLASSER LES INCOTERMS ---------- */
+
+  function startIncoterm(){
+    incotermState = {
+      cards: shuffle(INCOTERMS.map(i => i.code)),
+      placed: {}, // code -> tas
+      selected: null,
+      score: 0,
+      errors: 0,
+      over: false
+    };
+    renderIncoterm();
+  }
+
+  function renderIncoterm(){
+    const st = incotermState;
+    const zone = $("#gamesContent");
+    const remaining = st.cards.filter(c => !st.placed[c]);
+    zone.innerHTML = `
+      <div class="game-head">
+        <span class="game-title">📦 Classer les incoterms</span>
+        <span class="game-score">Score : <b>${st.score}</b> / ${INCOTERMS.length}</span>
+      </div>
+      <div class="incoterm-cards">
+        ${remaining.map(c => `
+          <button class="incoterm-card ${st.selected === c ? "sel" : ""}" data-code="${escapeHtml(c)}">${escapeHtml(c)}</button>
+        `).join("") || '<div class="suivi-empty">Toutes les cartes sont placées.</div>'}
+      </div>
+      <div class="incoterm-bins">
+        <button class="incoterm-bin" data-tas="peu">
+          <div class="bin-title">Vendeur paie peu</div>
+          <div class="bin-items">${Object.keys(st.placed).filter(c => st.placed[c] === "peu").map(c => `<span class="bin-chip">${escapeHtml(c)}</span>`).join("")}</div>
+        </button>
+        <button class="incoterm-bin" data-tas="tout">
+          <div class="bin-title">Vendeur paie tout</div>
+          <div class="bin-items">${Object.keys(st.placed).filter(c => st.placed[c] === "tout").map(c => `<span class="bin-chip">${escapeHtml(c)}</span>`).join("")}</div>
+        </button>
+      </div>
+      <div id="incotermFeedback"></div>
+      <button class="btn ghost" id="gamesBackBtn" style="margin-top:16px">← Retour au menu</button>
+    `;
+
+    $$(".incoterm-card").forEach(btn => {
+      btn.addEventListener("click", () => {
+        incotermState.selected = btn.dataset.code;
+        renderIncoterm();
+      });
+    });
+    $$(".incoterm-bin").forEach(btn => {
+      btn.addEventListener("click", () => placeIncoterm(btn.dataset.tas));
+    });
+    $("#gamesBackBtn").addEventListener("click", renderGamesMenu);
+  }
+
+  function placeIncoterm(tas){
+    const st = incotermState;
+    if(!st.selected || st.over) return;
+    const code = st.selected;
+    const ref = INCOTERMS.find(i => i.code === code);
+    const fb = $("#incotermFeedback");
+    if(ref && ref.tas === tas){
+      st.placed[code] = tas;
+      st.score++;
+      st.selected = null;
+      if(Object.keys(st.placed).length === INCOTERMS.length){
+        st.over = true;
+        if(st.score > (gamesStore.incotermBest || 0)){
+          gamesStore.incotermBest = st.score;
+          saveGames(gamesStore);
+        }
+        renderIncoterm();
+        $("#incotermFeedback").innerHTML = `
+          <div class="quiz-result" style="margin-top:16px">
+            <div class="quiz-result-mat">Classer les incoterms</div>
+            <div class="quiz-result-note">${st.score}<span>/${INCOTERMS.length}</span></div>
+            <div class="quiz-result-detail">${st.errors} erreur${st.errors > 1 ? "s" : ""}</div>
+            <button class="btn" id="incotermReplayBtn">Rejouer</button>
+          </div>`;
+        $("#incotermReplayBtn").addEventListener("click", startIncoterm);
+        return;
+      }
+      renderIncoterm();
+      $("#incotermFeedback").innerHTML = `<div class="quiz-fb-title ok">✅ Bien placé !</div>`;
+    } else {
+      st.errors++;
+      st.selected = null;
+      renderIncoterm();
+      $("#incotermFeedback").innerHTML = `<div class="correction-douce">Pas tout à fait… Réfléchis à qui paie quoi 🤔</div>`;
+    }
+  }
+
+  /* ---------- JEU 6 : QUI VEUT GAGNER ---------- */
+
+  function startQvg(){
+    qvgState = {
+      index: 0,
+      score: 0,
+      answered: false,
+      jokers: {fifty: true, friend: true, public: true},
+      hidden: [],
+      over: false
+    };
+    renderQvg();
+  }
+
+  function renderQvg(){
+    const st = qvgState;
+    const zone = $("#gamesContent");
+    if(st.index >= QVG_QUESTIONS.length){
+      st.over = true;
+      if(st.score > (gamesStore.qvgBest || 0)){
+        gamesStore.qvgBest = st.score;
+        saveGames(gamesStore);
+      }
+      zone.innerHTML = `
+        <div class="quiz-result">
+          <div class="quiz-result-mat">Qui veut gagner</div>
+          <div class="quiz-result-note">${st.score}<span>/${QVG_QUESTIONS.length}</span></div>
+          <div class="quiz-result-detail">${st.score === QVG_QUESTIONS.length ? "Sans faute, bravo ! 🏆" : "Continue à réviser 💪"}</div>
+          <button class="btn" id="qvgReplayBtn">Rejouer</button>
+          <button class="btn ghost" id="gamesBackBtn">← Retour au menu</button>
+        </div>`;
+      $("#qvgReplayBtn").addEventListener("click", startQvg);
+      $("#gamesBackBtn").addEventListener("click", renderGamesMenu);
+      return;
+    }
+
+    const q = QVG_QUESTIONS[st.index];
+    zone.innerHTML = `
+      <div class="game-head">
+        <span class="game-title">🎯 Qui veut gagner</span>
+        <span class="game-score">Question <b>${st.index + 1}</b> / ${QVG_QUESTIONS.length}</span>
+      </div>
+      <div class="qvg-jokers">
+        <button class="qvg-joker" id="jokerFifty" ${st.jokers.fifty ? "" : "disabled"}>50/50</button>
+        <button class="qvg-joker" id="jokerFriend" ${st.jokers.friend ? "" : "disabled"}>📞 Un ami</button>
+        <button class="qvg-joker" id="jokerPublic" ${st.jokers.public ? "" : "disabled"}>👥 Public</button>
+      </div>
+      <div class="quiz-card">
+        <div class="quiz-qnum">Difficulté ${st.index + 1} / ${QVG_QUESTIONS.length}</div>
+        <div class="quiz-question">${escapeHtml(q.q)}</div>
+        <div class="quiz-options">
+          ${q.options.map((opt, i) => `
+            <button class="quiz-opt ${st.hidden.includes(i) ? "hidden-opt" : ""}" data-idx="${i}" ${st.hidden.includes(i) || st.answered ? "disabled" : ""}>${escapeHtml(opt)}</button>
+          `).join("")}
+        </div>
+        <div class="quiz-feedback" id="qvgFeedback"></div>
+      </div>
+      <button class="btn ghost" id="gamesBackBtn" style="margin-top:16px">← Retour au menu</button>
+    `;
+
+    $$("#gamesContent .quiz-opt").forEach(btn => {
+      btn.addEventListener("click", () => answerQvg(parseInt(btn.dataset.idx, 10)));
+    });
+    $("#jokerFifty").addEventListener("click", useFifty);
+    $("#jokerFriend").addEventListener("click", useFriend);
+    $("#jokerPublic").addEventListener("click", usePublic);
+    $("#gamesBackBtn").addEventListener("click", renderGamesMenu);
+  }
+
+  function useFifty(){
+    const st = qvgState;
+    if(!st.jokers.fifty || st.answered) return;
+    st.jokers.fifty = false;
+    const q = QVG_QUESTIONS[st.index];
+    const wrong = q.options.map((_, i) => i).filter(i => i !== q.bonne);
+    st.hidden = shuffle(wrong).slice(0, 2);
+    renderQvg();
+  }
+
+  async function useFriend(){
+    const st = qvgState;
+    if(!st.jokers.friend || st.answered) return;
+    st.jokers.friend = false;
+    const q = QVG_QUESTIONS[st.index];
+    const fb = $("#qvgFeedback");
+    if(fb){
+      fb.classList.add("show");
+      fb.innerHTML = `<div class="correction-douce">📞 Ton ami réfléchit…</div>`;
+    }
+    try{
+      const res = await fetch("/api/ai/chat", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        credentials:"same-origin",
+        body: JSON.stringify({message: "Question de quiz : " + q.q + "\nOptions : " + q.options.join(" / ") + "\nDonne seulement la bonne réponse parmi les options, en une phrase courte."})
+      });
+      let data = null;
+      try{ data = await res.json(); }catch(e){ data = null; }
+      const reply = (data && (data.answer || data.reply || data.response || data.message || data.content)) || "Je ne suis pas sûr…";
+      if(fb) fb.innerHTML = `<div class="correction-douce">📞 Ton ami : ${escapeHtml(reply)}</div>`;
+    }catch(e){
+      if(fb) fb.innerHTML = `<div class="correction-douce">📞 Ton ami ne répond pas…</div>`;
+    }
+    renderQvg();
+    const fb2 = $("#qvgFeedback");
+    if(fb2) fb2.innerHTML = `<div class="correction-douce">📞 Ton ami a donné son avis.</div>`;
+  }
+
+  function usePublic(){
+    const st = qvgState;
+    if(!st.jokers.public || st.answered) return;
+    st.jokers.public = false;
+    const q = QVG_QUESTIONS[st.index];
+    const fb = $("#qvgFeedback");
+    if(fb){
+      fb.classList.add("show");
+      fb.innerHTML = `<div class="correction-douce">👥 Le public murmure : « ${escapeHtml(q.explication)} »</div>`;
+    }
+    renderQvg();
+    const fb2 = $("#qvgFeedback");
+    if(fb2) fb2.innerHTML = `<div class="correction-douce">👥 Le public murmure : « ${escapeHtml(q.explication)} »</div>`;
+  }
+
+  function answerQvg(idx){
+    const st = qvgState;
+    if(st.answered) return;
+    st.answered = true;
+    const q = QVG_QUESTIONS[st.index];
+    const correct = idx === q.bonne;
+    if(correct) st.score++;
+
+    $$("#gamesContent .quiz-opt").forEach(btn => {
+      const i = parseInt(btn.dataset.idx, 10);
+      btn.disabled = true;
+      if(i === q.bonne) btn.classList.add("good");
+      else if(i === idx) btn.classList.add("bad");
+    });
+
+    const fb = $("#qvgFeedback");
+    fb.classList.add("show");
+    fb.innerHTML = `
+      <div class="quiz-fb-title ${correct ? "ok" : "ko"}">${correct ? "✅ Bonne réponse !" : "❌ Raté"}</div>
+      <div class="quiz-fb-exp">${escapeHtml(q.explication)}</div>
+      <button class="btn quiz-next" id="qvgNextBtn">${st.index + 1 < QVG_QUESTIONS.length ? "Question suivante" : "Voir le résultat"}</button>
+    `;
+    $("#qvgNextBtn").addEventListener("click", () => {
+      st.index++;
+      st.answered = false;
+      st.hidden = [];
+      renderQvg();
+    });
+  }
+
+  /* ---------- JEU 7 : DUEL CONTRE L'IA ---------- */
+
+  function startDuel(){
+    duelState = {
+      index: 0,
+      playerScore: 0,
+      aiScore: 0,
+      answered: false,
+      questions: shuffle(QUIZ_BANK).slice(0, 5),
+      over: false
+    };
+    renderDuel();
+  }
+
+  function renderDuel(){
+    const st = duelState;
+    const zone = $("#gamesContent");
+    if(st.index >= st.questions.length){
+      st.over = true;
+      const win = st.playerScore > st.aiScore;
+      const draw = st.playerScore === st.aiScore;
+      if(st.playerScore > (gamesStore.duelBest || 0)){
+        gamesStore.duelBest = st.playerScore;
+        saveGames(gamesStore);
+      }
+      zone.innerHTML = `
+        <div class="quiz-result">
+          <div class="quiz-result-mat">Duel contre l'IA</div>
+          <div class="duel-scores">
+            <div class="duel-side"><div class="duel-label">Toi</div><div class="duel-val">${st.playerScore}</div></div>
+            <div class="duel-vs">VS</div>
+            <div class="duel-side"><div class="duel-label">Coach IA</div><div class="duel-val">${st.aiScore}</div></div>
+          </div>
+          <div class="quiz-result-detail">${win ? "🏆 Tu gagnes le duel !" : draw ? "🤝 Match nul !" : "😅 L'IA gagne cette fois…"}</div>
+          <button class="btn" id="duelReplayBtn">Rejouer</button>
+          <button class="btn ghost" id="gamesBackBtn">← Retour au menu</button>
+        </div>`;
+      $("#duelReplayBtn").addEventListener("click", startDuel);
+      $("#gamesBackBtn").addEventListener("click", renderGamesMenu);
+      return;
+    }
+
+    const q = st.questions[st.index];
+    zone.innerHTML = `
+      <div class="game-head">
+        <span class="game-title">⚔️ Duel contre l'IA</span>
+        <span class="game-score">Question <b>${st.index + 1}</b> / ${st.questions.length}</span>
+      </div>
+      <div class="duel-scores">
+        <div class="duel-side"><div class="duel-label">Toi</div><div class="duel-val">${st.playerScore}</div></div>
+        <div class="duel-vs">VS</div>
+        <div class="duel-side"><div class="duel-label">Coach IA</div><div class="duel-val">${st.aiScore}</div></div>
+      </div>
+      <div class="quiz-card">
+        <div class="quiz-qnum">${escapeHtml(q.matiere)}</div>
+        <div class="quiz-question">${escapeHtml(q.q)}</div>
+        <div class="quiz-options">
+          ${q.options.map((opt, i) => `<button class="quiz-opt" data-idx="${i}">${escapeHtml(opt)}</button>`).join("")}
+        </div>
+        <div class="quiz-feedback" id="duelFeedback"></div>
+      </div>
+      <button class="btn ghost" id="gamesBackBtn" style="margin-top:16px">← Retour au menu</button>
+    `;
+
+    $$("#gamesContent .quiz-opt").forEach(btn => {
+      btn.addEventListener("click", () => answerDuel(parseInt(btn.dataset.idx, 10)));
+    });
+    $("#gamesBackBtn").addEventListener("click", renderGamesMenu);
+  }
+
+  function answerDuel(idx){
+    const st = duelState;
+    if(st.answered) return;
+    st.answered = true;
+    const q = st.questions[st.index];
+    const correct = idx === q.bonne;
+    if(correct) st.playerScore++;
+
+    // L'IA répond correctement 70 % du temps
+    const aiCorrect = Math.random() < 0.7;
+    if(aiCorrect) st.aiScore++;
+
+    $$("#gamesContent .quiz-opt").forEach(btn => {
+      const i = parseInt(btn.dataset.idx, 10);
+      btn.disabled = true;
+      if(i === q.bonne) btn.classList.add("good");
+      else if(i === idx) btn.classList.add("bad");
+    });
+
+    const fb = $("#duelFeedback");
+    fb.classList.add("show");
+    fb.innerHTML = `
+      <div class="quiz-fb-title ${correct ? "ok" : "ko"}">${correct ? "✅ Bonne réponse !" : "❌ Raté"}</div>
+      <div class="quiz-fb-exp">${escapeHtml(q.explication)}</div>
+      <div class="duel-ai-line">${aiCorrect ? "🤖 Le coach IA a trouvé." : "🤖 Le coach IA s'est trompé !"}</div>
+      <button class="btn quiz-next" id="duelNextBtn">${st.index + 1 < st.questions.length ? "Question suivante" : "Voir le résultat"}</button>
+    `;
+    $("#duelNextBtn").addEventListener("click", () => {
+      st.index++;
+      st.answered = false;
+      renderDuel();
+    });
+  }
+
+  /* ---------- JEU 8 : MEMORY DES SIGLES ---------- */
+
+  function startMemory(){
+    const cards = [];
+    MEMORY_PAIRS.forEach((p, i) => {
+      cards.push({pairId:i, face:"sigle", text:p.sigle});
+      cards.push({pairId:i, face:"def", text:p.def});
+    });
+    memoryState = {
+      cards: shuffle(cards),
+      flipped: [],
+      matched: new Set(),
+      tries: 0,
+      lock: false,
+      over: false
+    };
+    renderMemory();
+  }
+
+  function renderMemory(){
+    const st = memoryState;
+    const zone = $("#gamesContent");
+    zone.innerHTML = `
+      <div class="game-head">
+        <span class="game-title">🃏 Memory des sigles</span>
+        <span class="game-score">Essais : <b>${st.tries}</b></span>
+      </div>
+      <div class="memory-grid">
+        ${st.cards.map((c, i) => {
+          const isFlipped = st.flipped.includes(i) || st.matched.has(c.pairId);
+          const isMatched = st.matched.has(c.pairId);
+          return `
+            <button class="memory-card ${isFlipped ? "flipped" : ""} ${isMatched ? "matched" : ""}" data-idx="${i}" ${isFlipped || st.lock ? "disabled" : ""}>
+              <span class="memory-front">?</span>
+              <span class="memory-back ${c.face}">${escapeHtml(c.text)}</span>
+            </button>`;
+        }).join("")}
+      </div>
+      <div id="memoryFeedback"></div>
+      <button class="btn ghost" id="gamesBackBtn" style="margin-top:16px">← Retour au menu</button>
+    `;
+
+    $$(".memory-card").forEach(btn => {
+      btn.addEventListener("click", () => flipMemory(parseInt(btn.dataset.idx, 10)));
+    });
+    $("#gamesBackBtn").addEventListener("click", renderGamesMenu);
+  }
+
+  function flipMemory(idx){
+    const st = memoryState;
+    if(st.lock || st.flipped.includes(idx) || st.matched.has(st.cards[idx].pairId)) return;
+    st.flipped.push(idx);
+    if(st.flipped.length === 2){
+      st.tries++;
+      const [a, b] = st.flipped;
+      const ca = st.cards[a], cb = st.cards[b];
+      if(ca.pairId === cb.pairId && ca.face !== cb.face){
+        st.matched.add(ca.pairId);
+        st.flipped = [];
+        renderMemory();
+        if(st.matched.size === MEMORY_PAIRS.length){
+          st.over = true;
+          if(st.tries < (gamesStore.memoryBest || Infinity) || !gamesStore.memoryBest){
+            gamesStore.memoryBest = st.tries;
+            saveGames(gamesStore);
+          }
+          $("#memoryFeedback").innerHTML = `
+            <div class="quiz-result" style="margin-top:16px">
+              <div class="quiz-result-mat">Memory des sigles</div>
+              <div class="quiz-result-note">${st.tries}<span> essais</span></div>
+              <div class="quiz-result-detail">Toutes les paires trouvées !</div>
+              <button class="btn" id="memoryReplayBtn">Rejouer</button>
+            </div>`;
+          $("#memoryReplayBtn").addEventListener("click", startMemory);
+        }
+      } else {
+        st.lock = true;
+        renderMemory();
+        setTimeout(() => {
+          st.flipped = [];
+          st.lock = false;
+          renderMemory();
+        }, 900);
+      }
+    } else {
+      renderMemory();
+    }
   }
 
   /* ============================================================
