@@ -145,6 +145,8 @@ LOGIN_HTML = r"""<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Quai — Connexion</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg">
 <style>
   :root{
     --bg:#0a0616;--card:rgba(24,16,48,.72);--cyan:#22d3ee;--violet:#a78bfa;
@@ -762,14 +764,18 @@ FICHIERS_AUTORISES = {"index.html", "style.css", "app.js", "manifest.json", "ico
 
 
 @app.route("/<path:nom>")
-@login_required
 def statique(nom):
     """N'expose QUE les fichiers de l'application (jamais server.py, la base,
-    ni la clé de session)."""
+    ni la clé de session). Les fichiers PWA sont publics (nécessaires à
+    l'installation avant connexion)."""
     if nom == "index.html":
         return redirect("/")
     if nom not in FICHIERS_AUTORISES:
         abort(404)
+    if nom in ("manifest.json", "icon.svg", "sw.js"):
+        return send_from_directory(BASE, nom)
+    if not utilisateur_connecte():
+        return redirect("/login")
     return send_from_directory(BASE, nom)
 
 
