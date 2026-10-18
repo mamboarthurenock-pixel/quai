@@ -3981,3 +3981,11 @@
       .finally(function(){ window.location.href = "/login"; });
   });
 })();
+
+/* Salutation cinéma selon l'heure */
+(function(){
+  var el = document.getElementById("cineHello");
+  if(!el) return;
+  var h = new Date().getHours();
+  el.textContent = (h >= 18 || h < 5) ? "Bonsoir" : "Bonjour";
+})();

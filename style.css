@@ -1796,3 +1796,44 @@ body.modal-open{overflow:hidden}
   text-align:center;
 }
 .fiche-image-msg.err{color:var(--rose)}
+
+/* ===== Cinéma vertical (vidéo CSS) ===== */
+.cinema{position:relative;height:290px;border-radius:24px;overflow:hidden;
+  background:linear-gradient(135deg,#0a0616,#1a0f33 50%,#0a0616);
+  border:1px solid var(--line);margin-bottom:18px;
+  box-shadow:0 24px 60px -30px rgba(34,211,238,.5)}
+.cinema-glow{position:absolute;inset:-30%;pointer-events:none;
+  background:radial-gradient(40% 40% at 30% 30%,rgba(34,211,238,.35),transparent 60%),
+             radial-gradient(40% 40% at 70% 70%,rgba(167,139,250,.35),transparent 60%);
+  animation:cineGlow 12s ease-in-out infinite alternate}
+@keyframes cineGlow{0%{transform:translate(-6%,-4%) scale(1)}100%{transform:translate(6%,4%) scale(1.2)}}
+.cinema-track{position:absolute;inset:0}
+.cine-slide{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:18px;
+  opacity:0;transform:translateY(24px) scale(.94);
+  animation:cineShow 15s ease-in-out infinite}
+.cine-slide:nth-child(1){animation-delay:0s}
+.cine-slide:nth-child(2){animation-delay:3s}
+.cine-slide:nth-child(3){animation-delay:6s}
+.cine-slide:nth-child(4){animation-delay:9s}
+.cine-slide:nth-child(5){animation-delay:12s}
+@keyframes cineShow{
+  0%{opacity:0;transform:translateY(24px) scale(.94)}
+  3%{opacity:1;transform:translateY(0) scale(1)}
+  17%{opacity:1;transform:translateY(0) scale(1)}
+  20%{opacity:0;transform:translateY(-18px) scale(.96)}
+  100%{opacity:0}
+}
+.cine-hello{font-size:clamp(40px,9vw,64px);font-weight:800;
+  background:var(--grad-main);background-size:200% auto;
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 0 24px rgba(34,211,238,.5))}
+.cine-name{font-size:clamp(18px,3vw,24px);color:var(--muted);letter-spacing:3px;text-transform:uppercase}
+.cine-big{font-size:clamp(34px,8vw,58px);font-weight:900;letter-spacing:1px;
+  background:linear-gradient(120deg,#22d3ee,#a78bfa,#f472b6);background-size:200% auto;
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  animation:gradientText 6s linear infinite;
+  filter:drop-shadow(0 0 22px rgba(167,139,250,.5))}
+.cine-sub{margin-top:8px;font-size:clamp(13px,2.4vw,17px);color:var(--text);opacity:.9}
+.cine-final .cine-motto{font-size:clamp(20px,4.6vw,34px);font-weight:900;letter-spacing:2px;
+  color:#fbbf24;text-shadow:0 0 24px rgba(251,191,36,.55);line-height:1.3}
