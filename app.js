@@ -4412,44 +4412,56 @@
 (function(){
   var intro = document.getElementById("intro");
   if(!intro) return;
-  // Narration de l'intro (ElevenLabs, générée une seule fois côté serveur)
-  try{
-    if(!localStorage.getItem("introVu")){
-      var _audioIntro = new Audio("/api/intro-audio");
-      _audioIntro.volume = 0.95;
-      _audioIntro.play().catch(function(){});
-      window._audioIntro = _audioIntro;
-    }
-  }catch(e){}
+  var audioIntro = null;
+
+  function demarrer(){
+    intro.classList.add("started");
+    try{
+      if(!audioIntro){
+        audioIntro = new Audio("/api/intro-audio");
+        audioIntro.volume = 0.95;
+        window._audioIntro = audioIntro;
+      }
+      audioIntro.play().catch(function(){});
+    }catch(e){}
+  }
 
   function fermer(){
-    try{ if(window._audioIntro){ window._audioIntro.pause(); } }catch(e){}
+    try{ if(audioIntro){ audioIntro.pause(); } }catch(e){}
     intro.classList.add("sortie");
     try{ localStorage.setItem("introVu","1"); }catch(e){}
     setTimeout(function(){ intro.style.display = "none"; }, 900);
   }
-  var skip = document.getElementById("introSkip");
-  if(skip) skip.addEventListener("click", fermer);
-  // Fermer au moindre tap n'importe où (mobile inclus)
-  intro.addEventListener("click", fermer);
-  intro.addEventListener("touchstart", fermer, {passive:true});
+
+  function brancher(box){
+    var sb = box.querySelector("#introStart");
+    if(sb) sb.addEventListener("click", function(e){ e.stopPropagation(); demarrer(); });
+    var sk = box.querySelector("#introSkip");
+    if(sk) sk.addEventListener("click", function(e){ e.stopPropagation(); fermer(); });
+  }
+  brancher(intro);
   document.addEventListener("keydown", function(e){ if(e.key === "Escape") fermer(); });
-  setTimeout(fermer, 90500);
+
   try{
     if(localStorage.getItem("introVu") === "1"){
       intro.style.display = "none";
     }
   }catch(e){}
+
+  setTimeout(fermer, 90500);
+
   window.revoirIntro = function(){
     var parent = intro.parentNode;
     if(!parent) return;
     var clone = intro.cloneNode(true);
     clone.style.display = "grid";
     clone.classList.remove("sortie");
+    clone.classList.remove("started");
     parent.replaceChild(clone, intro);
     intro = clone;
-    var sk = clone.querySelector("#introSkip");
-    if(sk) sk.addEventListener("click", fermer);
+    try{ if(audioIntro){ audioIntro.pause(); } }catch(e){}
+    audioIntro = null;
+    brancher(clone);
     setTimeout(fermer, 90500);
   };
 })();

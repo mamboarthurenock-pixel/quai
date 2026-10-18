@@ -2160,3 +2160,14 @@ body.modal-open{overflow:hidden}
 
 .intro-kicker{font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--accent);
   opacity:.9;margin-bottom:10px;text-align:center}
+
+/* Intro : en pause jusqu'au clic Démarrer (autoplay mobile) */
+.intro .intro-screen{animation-play-state:paused}
+.intro .intro-glow{animation-play-state:paused}
+.intro.started .intro-screen{animation-play-state:running}
+.intro.started .intro-glow{animation-play-state:running}
+.intro-start{position:absolute;z-index:3;bottom:28px;left:50%;transform:translateX(-50%);
+  padding:14px 26px;border:none;border-radius:999px;cursor:pointer;
+  background:linear-gradient(135deg,#22d3ee,#a78bfa);color:#0a0616;font-weight:800;font-size:15px;
+  box-shadow:0 10px 30px -10px rgba(34,211,238,.8);animation:pulseGlow 2.5s ease-in-out infinite}
+.intro.started .intro-start{display:none}

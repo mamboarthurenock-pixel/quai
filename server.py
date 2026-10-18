@@ -17,7 +17,7 @@ from functools import wraps
 from collections import defaultdict
 
 from flask import (
-    Flask, request, session, redirect, jsonify,
+    Flask, request, session, redirect, jsonify, Response,
     send_from_directory, abort, render_template_string
 )
 import bcrypt
@@ -117,6 +117,14 @@ def init_db():
                     last_login TIMESTAMP
                 )
             """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS media (
+                    cle TEXT PRIMARY KEY,
+                    mime TEXT NOT NULL,
+                    data BYTEA NOT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT now()
+                )
+            """)
         else:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS users (
@@ -125,6 +133,14 @@ def init_db():
                     password_hash TEXT NOT NULL,
                     created_at TEXT NOT NULL DEFAULT (datetime('now')),
                     last_login TEXT
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS media (
+                    cle TEXT PRIMARY KEY,
+                    mime TEXT NOT NULL,
+                    data BLOB NOT NULL,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now'))
                 )
             """)
         conn.commit()
@@ -137,6 +153,35 @@ def init_db():
         except Exception:
             pass
 
+
+
+
+def media_put(cle, mime, octets):
+    try:
+        conn = db()
+        try:
+            conn.execute("DELETE FROM media WHERE cle = ?", (cle,))
+            conn.execute("INSERT INTO media (cle, mime, data) VALUES (?, ?, ?)", (cle, mime, octets))
+            conn.commit()
+        finally:
+            conn.close()
+        return True
+    except Exception:
+        return False
+
+
+def media_get(cle):
+    try:
+        conn = db()
+        try:
+            row = conn.execute("SELECT mime, data FROM media WHERE cle = ?", (cle,)).fetchone()
+            if row:
+                return row["mime"], bytes(row["data"])
+        finally:
+            conn.close()
+    except Exception:
+        pass
+    return None
 
 # Création de la table au démarrage (gunicorn inclus)
 init_db()
@@ -376,6 +421,12 @@ INTRO_SCRIPT = (
 @app.route("/api/intro-audio")
 @login_required
 def intro_audio():
+    # 1) PostgreSQL (persistant)
+    m = media_get("intro:audio")
+    if m:
+        mime, data = m
+        return Response(data, mimetype=mime)
+    # 2) disque
     chemin = os.path.join(BASE, "intro.mp3")
     if not os.path.exists(chemin):
         if not ELEVEN_API_KEY:
@@ -392,7 +443,10 @@ def intro_audio():
                 f.write(audio)
         except Exception as e:
             return jsonify(ok=False, error=str(e)[:200]), 502
-    return send_from_directory(BASE, "intro.mp3")
+    with open(chemin, "rb") as f:
+        audio = f.read()
+    media_put("intro:audio", "audio/mpeg", audio)
+    return Response(audio, mimetype="audio/mpeg")
 
 
 @app.route("/login")
@@ -619,12 +673,14 @@ def _image_cloudflare(prompt):
 def _sauver_et_url(empreinte, chemin, b64, source):
     """Sauvegarde l'image sur disque et renvoie une URL légère (cache navigateur)."""
     import base64 as _b64
+    octets = _b64.b64decode(b64)
     try:
         if not os.path.exists(chemin):
             with open(chemin, "wb") as f:
-                f.write(_b64.b64decode(b64))
+                f.write(octets)
     except Exception:
         pass
+    media_put("img:" + empreinte + ".jpg", "image/jpeg", octets)
     return jsonify(ok=True, source=source,
                    url="/img/" + empreinte + ".jpg",
                    image="data:image/jpeg;base64," + b64)
@@ -633,6 +689,12 @@ def _sauver_et_url(empreinte, chemin, b64, source):
 @app.route("/img/<path:nom>")
 @login_required
 def img_cache(nom):
+    # 1) PostgreSQL (persistant)
+    m = media_get("img:" + nom)
+    if m:
+        mime, data = m
+        return Response(data, mimetype=mime)
+    # 2) disque (local)
     return send_from_directory(os.path.join(BASE, "images"), nom)
 
 
