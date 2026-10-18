@@ -1340,6 +1340,272 @@
   box-shadow:inset 0 0 30px -12px rgba(251,191,36,.5),0 0 24px -12px rgba(251,191,36,.5);
 }
 
+/* ---------- Quiz : compteur de questions jamais vues ---------- */
+.quiz-fresh{
+  font-size:11.5px;color:var(--muted);font-family:var(--mono);
+  margin:-6px 0 14px;letter-spacing:.3px;
+}
+.quiz-fresh::before{
+  content:"✦ ";color:var(--accent);
+}
+
+/* ---------- Flashcards (SM-2) ---------- */
+.flash-home{padding:18px}
+.flash-home-row{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  flex-wrap:wrap;
+}
+.flash-home-title{font-size:16px;font-weight:800;letter-spacing:.2px}
+.flash-home-sub{font-size:12.5px;color:var(--muted);margin-top:3px;font-family:var(--mono)}
+.flash-start{width:auto;padding:12px 22px;font-size:14px;margin:0}
+.flash-start:disabled{opacity:.55;cursor:default;transform:none;box-shadow:none}
+
+.flash-head{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;
+}
+.flash-mat{
+  font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;
+  color:var(--accent);background:rgba(34,211,238,.14);
+  border:1px solid rgba(34,211,238,.35);
+  padding:4px 12px;border-radius:999px;
+}
+.flash-count{font-size:12.5px;color:var(--muted);font-family:var(--mono)}
+
+.flash-scene{
+  perspective:1400px;
+  margin-top:6px;
+}
+.flash-card{
+  position:relative;
+  width:100%;
+  min-height:280px;
+  transform-style:preserve-3d;
+  transition:transform .6s cubic-bezier(.2,.7,.2,1);
+}
+.flash-card.flipped{transform:rotateY(180deg)}
+
+.flash-face{
+  position:absolute;inset:0;
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+  display:flex;flex-direction:column;
+  background:var(--card);
+  backdrop-filter:blur(18px) saturate(1.4);
+  -webkit-backdrop-filter:blur(18px) saturate(1.4);
+  border:1px solid rgba(167,139,250,.3);
+  border-radius:var(--radius);
+  padding:22px;
+  box-shadow:var(--shadow),0 0 50px -20px rgba(34,211,238,.5);
+  overflow:hidden;
+}
+.flash-face::before{
+  content:"";position:absolute;left:0;right:0;top:0;height:2px;
+  background:var(--grad-main);opacity:.85;pointer-events:none;
+}
+.flash-back{
+  transform:rotateY(180deg);
+  border-color:rgba(34,211,238,.4);
+  box-shadow:var(--shadow),0 0 50px -18px rgba(34,211,238,.7);
+}
+
+.flash-label{
+  font-size:10.5px;text-transform:uppercase;letter-spacing:2px;
+  color:var(--muted);font-weight:700;margin-bottom:12px;
+}
+.flash-question{
+  flex:1;
+  font-size:clamp(16px,2.6vw,19px);font-weight:600;line-height:1.45;
+  letter-spacing:.2px;
+  display:flex;align-items:center;
+}
+.flash-answer{
+  font-size:clamp(16px,2.6vw,19px);font-weight:800;line-height:1.4;
+  color:var(--accent);
+  text-shadow:0 0 18px rgba(34,211,238,.55);
+  margin-bottom:12px;
+}
+.flash-exp{
+  flex:1;
+  font-size:13.5px;line-height:1.55;color:var(--muted);
+  background:rgba(7,12,23,.5);
+  border:1px solid var(--line-soft);
+  border-radius:12px;
+  padding:12px 14px;
+  overflow-y:auto;
+}
+.flash-flip-btn{
+  margin-top:16px;
+  width:100%;
+}
+.flash-actions{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+  margin-top:16px;
+}
+.flash-actions .btn{margin:0;width:100%}
+.flash-good{
+  background:linear-gradient(135deg,#34d399,#22d3ee);
+  border-color:rgba(52,211,153,.5);
+  box-shadow:0 12px 34px -10px rgba(52,211,153,.7);
+}
+.flash-good:hover{
+  box-shadow:0 14px 44px -8px rgba(52,211,153,.9),0 0 32px rgba(34,211,238,.5);
+}
+.flash-bad{
+  color:#fda4af;
+  border-color:rgba(251,113,133,.4);
+}
+.flash-bad:hover{
+  border-color:rgba(251,113,133,.7);
+  color:#fecdd3;
+  box-shadow:0 0 20px -8px rgba(251,113,133,.6);
+}
+
+@media(min-width:640px){
+  .flash-card{min-height:320px}
+}
+
+/* ---------- Flashcards (SM-2) ---------- */
+.quiz-seen-line{
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:12px;color:var(--muted);font-family:var(--mono);
+  margin-bottom:12px;padding:8px 12px;
+  background:rgba(34,211,238,.06);
+  border:1px solid var(--line-soft);border-radius:10px;
+}
+.quiz-seen-line b{color:var(--accent);font-weight:800}
+
+.flash-head{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  flex-wrap:wrap;
+}
+.flash-info{flex:1;min-width:0}
+.flash-title{font-size:15px;font-weight:700;letter-spacing:.2px}
+.flash-sub{font-size:12.5px;color:var(--muted);margin-top:4px;font-family:var(--mono)}
+.flash-sub b{color:var(--accent);font-weight:800}
+.flash-start{width:auto;padding:12px 20px;font-size:14px;margin:0}
+.flash-start:disabled{opacity:.5;cursor:default;transform:none}
+
+.flash-progress{
+  height:6px;border-radius:999px;overflow:hidden;
+  background:rgba(148,163,184,.15);margin:16px 0 8px;
+}
+.flash-progress-bar{
+  height:100%;border-radius:999px;
+  background:var(--grad-main);background-size:200% auto;
+  box-shadow:0 0 16px rgba(34,211,238,.7),0 0 24px rgba(167,139,250,.4);
+  transition:width .4s cubic-bezier(.2,.7,.2,1);
+  animation:gradientText 4s linear infinite;
+}
+.flash-counter{
+  text-align:center;font-size:11.5px;color:var(--muted);
+  font-family:var(--mono);letter-spacing:1px;text-transform:uppercase;
+  margin-bottom:14px;
+}
+
+.flash-scene{
+  perspective:1400px;
+  margin-bottom:16px;
+}
+.flash-card{
+  position:relative;
+  width:100%;
+  min-height:280px;
+  transform-style:preserve-3d;
+  transition:transform .65s cubic-bezier(.2,.7,.2,1);
+}
+.flash-card.flipped{transform:rotateY(180deg)}
+
+.flash-face{
+  position:absolute;inset:0;
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+  display:flex;flex-direction:column;
+  padding:22px;
+  border-radius:var(--radius);
+  background:var(--card);
+  backdrop-filter:blur(18px) saturate(1.4);
+  -webkit-backdrop-filter:blur(18px) saturate(1.4);
+  border:1px solid rgba(167,139,250,.3);
+  box-shadow:var(--shadow),0 0 50px -20px rgba(34,211,238,.5);
+  overflow:hidden;
+}
+.flash-face::before{
+  content:"";position:absolute;left:0;right:0;top:0;height:2px;
+  background:var(--grad-main);opacity:.85;pointer-events:none;
+}
+.flash-front{transform:rotateY(0deg)}
+.flash-back{transform:rotateY(180deg)}
+
+.flash-mat{
+  font-size:10.5px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--accent);margin-bottom:14px;
+  text-shadow:0 0 14px rgba(34,211,238,.6);
+}
+.flash-question{
+  flex:1;
+  font-size:clamp(16px,2.6vw,19px);font-weight:600;line-height:1.45;
+  letter-spacing:.2px;
+  display:flex;align-items:center;
+}
+.flash-flip-btn{
+  margin-top:16px;width:100%;
+}
+.flash-answer{
+  font-size:clamp(15px,2.4vw,17px);font-weight:700;line-height:1.4;
+  color:var(--green);
+  background:rgba(52,211,153,.1);
+  border:1px solid rgba(52,211,153,.35);
+  border-radius:12px;padding:12px 14px;
+  margin-bottom:12px;
+  box-shadow:0 0 20px -10px rgba(52,211,153,.6);
+}
+.flash-exp{
+  flex:1;
+  font-size:13.5px;line-height:1.55;color:var(--muted);
+  background:rgba(7,12,23,.5);
+  border:1px solid var(--line-soft);
+  border-radius:12px;padding:12px 14px;
+  overflow-y:auto;
+}
+.flash-actions{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+  margin-top:14px;
+}
+.flash-btn{
+  padding:13px 10px;border-radius:12px;
+  font-family:inherit;font-size:14px;font-weight:800;letter-spacing:.3px;
+  cursor:pointer;transition:transform .2s,box-shadow .2s,background .2s;
+  border:1px solid transparent;
+}
+.flash-btn:active{transform:scale(.97)}
+.flash-btn-good{
+  background:rgba(52,211,153,.16);
+  border-color:rgba(52,211,153,.5);
+  color:var(--green);
+  box-shadow:0 0 20px -8px rgba(52,211,153,.6);
+}
+.flash-btn-good:hover{
+  background:rgba(52,211,153,.26);
+  box-shadow:0 0 28px -6px rgba(52,211,153,.8);
+  transform:translateY(-1px);
+}
+.flash-btn-bad{
+  background:rgba(251,191,36,.14);
+  border-color:rgba(251,191,36,.5);
+  color:var(--amber);
+  box-shadow:0 0 20px -8px rgba(251,191,36,.6);
+}
+.flash-btn-bad:hover{
+  background:rgba(251,191,36,.24);
+  box-shadow:0 0 28px -6px rgba(251,191,36,.8);
+  transform:translateY(-1px);
+}
+
+@media(prefers-reduced-motion:reduce){
+  .flash-card{transition:none}
+}
+
 /* ---------- Bouton déconnexion ---------- */
 .logout-btn{
   margin-left:auto;flex:none;

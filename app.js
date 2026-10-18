@@ -217,6 +217,78 @@
   const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
   /* ============================================================
+     GARDE-FOU ANTI-RÉPÉTITION (questions déjà vues)
+     ============================================================ */
+
+  const SEEN_KEY = "lpcc_seen_v1";
+  const SEEN_TTL = 24 * 60 * 60 * 1000; // 1 jour
+
+  function questionId(q){
+    // Hash simple (djb2) sur matiere + "|" + q
+    const s = String(q.matiere || "") + "|" + String(q.q || "");
+    let h = 5381;
+    for(let i = 0; i < s.length; i++){
+      h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+    }
+    return "q" + (h >>> 0).toString(36);
+  }
+
+  function loadSeen(){
+    try{
+      const raw = localStorage.getItem(SEEN_KEY);
+      if(!raw) return {};
+      const obj = JSON.parse(raw);
+      return (obj && typeof obj === "object") ? obj : {};
+    }catch(e){ return {}; }
+  }
+
+  function saveSeen(obj){
+    try{ localStorage.setItem(SEEN_KEY, JSON.stringify(obj)); }catch(e){}
+  }
+
+  let seenStore = loadSeen();
+
+  function questionVue(id){
+    const t = seenStore[id];
+    if(!t) return false;
+    return (Date.now() - t) < SEEN_TTL;
+  }
+
+  function marquerVue(id){
+    seenStore[id] = Date.now();
+    saveSeen(seenStore);
+  }
+
+  function questionsNonVues(pool){
+    return pool.filter(q => !questionVue(questionId(q)));
+  }
+
+  // Mélange (Fisher-Yates)
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i = a.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  // Priorise les questions non vues ; s'il n'y en a plus, autorise toutes.
+  function pickQuestion(pool){
+    if(!pool || !pool.length) return null;
+    const fresh = questionsNonVues(pool);
+    const source = fresh.length ? fresh : pool;
+    return source[Math.floor(Math.random() * source.length)];
+  }
+
+  // Ordonne un pool : non vues d'abord (mélangées), puis les autres (mélangées).
+  function orderByFreshness(pool){
+    const fresh = shuffle(questionsNonVues(pool));
+    const rest = shuffle(pool.filter(q => questionVue(questionId(q))));
+    return fresh.concat(rest);
+  }
+
+  /* ============================================================
      ICÔNES SVG (inline, hors-ligne)
      ============================================================ */
 
@@ -721,7 +793,14 @@
 
   function renderQuizSelector(){
     const zone = $("#quizZone");
-    let html = '<div class="quiz-selector">';
+    const total = QUIZ_BANK.length;
+    const nonVues = questionsNonVues(QUIZ_BANK).length;
+    let html = `
+      <div class="quiz-seen-line">
+        <span>🆕 Jamais vues</span>
+        <span><b>${nonVues}</b> / ${total}</span>
+      </div>
+      <div class="quiz-selector">`;
     QUIZ_MATIERES.forEach(m => {
       const best = getBest(m);
       const bestTxt = best === null ? "—" : best + "/20";
@@ -740,11 +819,12 @@
   }
 
   function startQuiz(matiere){
-    const questions = QUIZ_BANK.filter(q => q.matiere === matiere);
-    if(questions.length === 0){
+    const pool = QUIZ_BANK.filter(q => q.matiere === matiere);
+    if(pool.length === 0){
       renderQuizSelector();
       return;
     }
+    const questions = orderByFreshness(pool);
     quizState = {
       matiere,
       questions,
@@ -794,6 +874,7 @@
     const q = st.questions[st.index];
     const correct = idx === q.bonne;
     if(correct) st.score++;
+    marquerVue(questionId(q));
 
     $$(".quiz-opt").forEach(btn => {
       const i = parseInt(btn.dataset.idx, 10);
@@ -1082,7 +1163,7 @@
   function renderWheelQuestion(){
     const matiere = wheelState.current;
     const pool = WHEEL_QUESTIONS[matiere];
-    const q = pool[Math.floor(Math.random() * pool.length)];
+    const q = pickQuestion(pool) || pool[0];
     wheelState.question = q;
 
     const zone = $("#wheelQuestion");
@@ -1106,6 +1187,7 @@
     wheelState.answered = true;
     const q = wheelState.question;
     const correct = idx === q.bonne;
+    marquerVue(questionId(q));
     if(correct){
       wheelState.score += 10;
       gamesStore.wheelScore = wheelState.score;
@@ -1291,7 +1373,8 @@
 
   function nextCourseQuestion(){
     if(courseState.over) return;
-    const q = QUIZ_BANK[Math.floor(Math.random() * QUIZ_BANK.length)];
+    const candidates = prioriserQuestions(QUIZ_BANK);
+    const q = candidates[Math.floor(Math.random() * candidates.length)];
     courseState.current = q;
     courseState.answered = false;
 
@@ -1315,6 +1398,7 @@
     courseState.answered = true;
     const q = courseState.current;
     const correct = idx === q.bonne;
+    marquerVue(questionId(q));
 
     if(correct) courseState.score++;
     else courseState.score = Math.max(0, courseState.score - 1);
@@ -1596,6 +1680,324 @@
   }
 
   /* ============================================================
+     FLASHCARDS — Répétition espacée (SM-2)
+     ============================================================ */
+
+  const SM2_KEY = "lpcc_sm2_v1";
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
+  function loadSM2(){
+    try{
+      const raw = localStorage.getItem(SM2_KEY);
+      if(!raw) return {};
+      const obj = JSON.parse(raw);
+      return (obj && typeof obj === "object") ? obj : {};
+    }catch(e){ return {}; }
+  }
+
+  function saveSM2(obj){
+    try{ localStorage.setItem(SM2_KEY, JSON.stringify(obj)); }catch(e){}
+  }
+
+  let sm2Store = loadSM2();
+
+  function sm2Get(id){
+    const c = sm2Store[id];
+    if(!c) return {interval:1, ease:2.5, due:0};
+    return {
+      interval: Number(c.interval) || 1,
+      ease: Number(c.ease) || 2.5,
+      due: Number(c.due) || 0
+    };
+  }
+
+  function sm2Set(id, card){
+    sm2Store[id] = card;
+    saveSM2(sm2Store);
+  }
+
+  // Une carte est due si jamais vue ou si due <= maintenant
+  function carteDue(q){
+    const id = questionId(q);
+    if(!questionVue(id)) return true;
+    const c = sm2Get(id);
+    return c.due <= Date.now();
+  }
+
+  function cartesDues(){
+    return QUIZ_BANK.filter(carteDue);
+  }
+
+  // SM-2 simplifié
+  function sm2Review(id, savait){
+    const c = sm2Get(id);
+    let interval, ease;
+    if(savait){
+      interval = Math.max(1, Math.round(c.interval * c.ease));
+      ease = Math.min(2.8, c.ease + 0.1);
+    } else {
+      interval = 1;
+      ease = Math.max(1.3, c.ease - 0.2);
+    }
+    const card = {
+      interval,
+      ease: Math.round(ease * 100) / 100,
+      due: Date.now() + interval * DAY_MS
+    };
+    sm2Set(id, card);
+    marquerVue(id);
+    return card;
+  }
+
+  let flashState = null;
+
+  function renderFlashcardsHome(){
+    const zone = $("#flashcardsZone");
+    if(!zone) return;
+    const dues = cartesDues();
+    const total = QUIZ_BANK.length;
+    zone.innerHTML = `
+      <div class="card flash-home">
+        <div class="flash-home-row">
+          <div>
+            <div class="flash-home-title">🃏 Cartes du jour</div>
+            <div class="flash-home-sub">${dues.length} carte${dues.length > 1 ? "s" : ""} à réviser sur ${total}</div>
+          </div>
+          <button class="btn btn-ai flash-start" id="flashStartBtn" ${dues.length ? "" : "disabled"}>
+            ${dues.length ? "Commencer" : "À jour ✓"}
+          </button>
+        </div>
+      </div>
+    `;
+    const btn = $("#flashStartBtn");
+    if(btn) btn.addEventListener("click", startFlashcards);
+  }
+
+  function startFlashcards(){
+    const dues = shuffle(cartesDues());
+    if(!dues.length){
+      renderFlashcardsHome();
+      return;
+    }
+    flashState = {
+      queue: dues,
+      index: 0,
+      flipped: false,
+      done: 0
+    };
+    renderFlashcard();
+  }
+
+  function renderFlashcard(){
+    const zone = $("#flashcardsZone");
+    if(!zone || !flashState) return;
+
+    if(flashState.index >= flashState.queue.length){
+      renderFlashcardsDone();
+      return;
+    }
+
+    const q = flashState.queue[flashState.index];
+    const total = flashState.queue.length;
+    const pos = flashState.index + 1;
+    const progress = Math.round((flashState.index / total) * 100);
+
+    zone.innerHTML = `
+      <div class="flash-head">
+        <span class="flash-mat">${escapeHtml(q.matiere)}</span>
+        <span class="flash-count">${pos} / ${total}</span>
+      </div>
+      <div class="quiz-progress"><div class="quiz-progress-bar" style="width:${progress}%"></div></div>
+      <div class="flash-scene">
+        <div class="flash-card ${flashState.flipped ? "flipped" : ""}" id="flashCard">
+          <div class="flash-face flash-front">
+            <div class="flash-label">Question</div>
+            <div class="flash-question">${escapeHtml(q.q)}</div>
+            <button class="btn flash-flip-btn" id="flashFlipBtn">Retourner</button>
+          </div>
+          <div class="flash-face flash-back">
+            <div class="flash-label">Réponse</div>
+            <div class="flash-answer">${escapeHtml(q.options[q.bonne])}</div>
+            <div class="flash-exp">${escapeHtml(q.explication)}</div>
+            <div class="flash-actions">
+              <button class="btn flash-good" id="flashGoodBtn">😊 Je savais</button>
+              <button class="btn ghost flash-bad" id="flashBadBtn">🤔 À revoir</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const flip = $("#flashFlipBtn");
+    if(flip) flip.addEventListener("click", () => {
+      flashState.flipped = true;
+      const card = $("#flashCard");
+      if(card) card.classList.add("flipped");
+    });
+
+    const good = $("#flashGoodBtn");
+    if(good) good.addEventListener("click", () => answerFlashcard(true));
+    const bad = $("#flashBadBtn");
+    if(bad) bad.addEventListener("click", () => answerFlashcard(false));
+  }
+
+  function answerFlashcard(savait){
+    if(!flashState) return;
+    const q = flashState.queue[flashState.index];
+    sm2Review(questionId(q), savait);
+    flashState.done++;
+    flashState.index++;
+    flashState.flipped = false;
+    renderFlashcard();
+  }
+
+  function renderFlashcardsDone(){
+    const zone = $("#flashcardsZone");
+    if(!zone) return;
+    const done = flashState ? flashState.done : 0;
+    zone.innerHTML = `
+      <div class="quiz-result">
+        <div class="quiz-result-mat">Cartes du jour</div>
+        <div class="quiz-result-note">${done}<span> carte${done > 1 ? "s" : ""}</span></div>
+        <div class="quiz-result-msg">Session terminée ! Reviens demain pour les prochaines révisions. 🎯</div>
+        <button class="btn" id="flashAgainBtn">Voir les cartes dues</button>
+      </div>
+    `;
+    flashState = null;
+    const again = $("#flashAgainBtn");
+    if(again) again.addEventListener("click", renderFlashcardsHome);
+  }
+
+  /* ============================================================
+     FLASHCARDS — Cartes du jour (SM-2)
+     ============================================================ */
+
+  let flashState = null;
+
+  function updateFlashDueCount(){
+    const el = $("#flashDueCount");
+    if(!el) return;
+    const due = cartesDuJour().length;
+    const total = QUIZ_BANK.length;
+    el.innerHTML = due > 0
+      ? `<b>${due}</b> carte${due > 1 ? "s" : ""} à réviser sur ${total}`
+      : `Aucune carte due — reviens plus tard ✨`;
+    const btn = $("#flashStartBtn");
+    if(btn) btn.disabled = due === 0;
+  }
+
+  function startFlashcards(){
+    const cartes = cartesDuJour();
+    if(!cartes.length){
+      updateFlashDueCount();
+      return;
+    }
+    // Mélange
+    for(let i = cartes.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [cartes[i], cartes[j]] = [cartes[j], cartes[i]];
+    }
+    flashState = {
+      cartes,
+      index: 0,
+      flipped: false,
+      done: 0
+    };
+    renderFlashcard();
+  }
+
+  function renderFlashcard(){
+    const zone = $("#flashcardsZone");
+    if(!zone) return;
+    const st = flashState;
+    if(!st || st.index >= st.cartes.length){
+      renderFlashDone();
+      return;
+    }
+    const q = st.cartes[st.index];
+    const total = st.cartes.length;
+    const progress = Math.round((st.index / total) * 100);
+
+    zone.innerHTML = `
+      <div class="flash-progress">
+        <div class="flash-progress-bar" style="width:${progress}%"></div>
+      </div>
+      <div class="flash-counter">Carte ${st.index + 1} / ${total}</div>
+      <div class="flash-scene">
+        <div class="flash-card ${st.flipped ? "flipped" : ""}" id="flashCard">
+          <div class="flash-face flash-front">
+            <div class="flash-mat">${escapeHtml(q.matiere)}</div>
+            <div class="flash-question">${escapeHtml(q.q)}</div>
+            <button class="btn flash-flip-btn" id="flashFlipBtn">Retourner</button>
+          </div>
+          <div class="flash-face flash-back">
+            <div class="flash-mat">${escapeHtml(q.matiere)}</div>
+            <div class="flash-answer">✅ ${escapeHtml(q.options[q.bonne])}</div>
+            <div class="flash-exp">${escapeHtml(q.explication)}</div>
+            <div class="flash-actions">
+              <button class="flash-btn flash-btn-good" id="flashGoodBtn">😊 Je savais</button>
+              <button class="flash-btn flash-btn-bad" id="flashBadBtn">🤔 À revoir</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const flip = $("#flashFlipBtn");
+    if(flip) flip.addEventListener("click", () => {
+      st.flipped = true;
+      const card = $("#flashCard");
+      if(card) card.classList.add("flipped");
+    });
+
+    const good = $("#flashGoodBtn");
+    if(good) good.addEventListener("click", () => answerFlashcard(true));
+    const bad = $("#flashBadBtn");
+    if(bad) bad.addEventListener("click", () => answerFlashcard(false));
+  }
+
+  function answerFlashcard(savait){
+    const st = flashState;
+    if(!st || st.index >= st.cartes.length) return;
+    const q = st.cartes[st.index];
+    const id = questionId(q);
+    sm2Review(id, savait);
+    marquerVue(id);
+    st.done++;
+    st.index++;
+    st.flipped = false;
+    updateFlashDueCount();
+    renderFlashcard();
+  }
+
+  function renderFlashDone(){
+    const zone = $("#flashcardsZone");
+    if(!zone) return;
+    const done = flashState ? flashState.done : 0;
+    zone.innerHTML = `
+      <div class="quiz-result">
+        <div class="quiz-result-mat">Cartes du jour</div>
+        <div class="quiz-result-note">${done}<span> carte${done > 1 ? "s" : ""}</span></div>
+        <div class="quiz-result-detail">Session terminée</div>
+        <div class="quiz-result-msg">${done > 0 ? "Bien joué, ta mémoire te remercie ! 🧠" : "Aucune carte à réviser."}</div>
+        <button class="btn" id="flashRestartBtn">Nouvelle session</button>
+      </div>
+    `;
+    const btn = $("#flashRestartBtn");
+    if(btn) btn.addEventListener("click", () => {
+      flashState = null;
+      startFlashcards();
+    });
+    updateFlashDueCount();
+  }
+
+  function initFlashcards(){
+    const btn = $("#flashStartBtn");
+    if(btn) btn.addEventListener("click", startFlashcards);
+    updateFlashDueCount();
+  }
+
+  /* ============================================================
      ASSISTANT — Coach IA + Voix off
      ============================================================ */
 
@@ -1821,6 +2223,7 @@
     renderQuizSelector();
     renderGamesMenu();
     initEtude();
+    renderFlashcardsHome();
     initAssistant();
     $("#calcCount").textContent = store.calcCount || 0;
 
