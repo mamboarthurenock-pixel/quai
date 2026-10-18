@@ -3085,6 +3085,58 @@
   }
 
   /* ============================================================
+     BIENVENUE / GUIDE
+     ============================================================ */
+
+  const WELCOME_KEY = "bienvenue";
+
+  function welcomeDejaVue(){
+    try{ return localStorage.getItem(WELCOME_KEY) === "1"; }catch(e){ return false; }
+  }
+
+  function marquerBienvenueVue(){
+    try{ localStorage.setItem(WELCOME_KEY, "1"); }catch(e){}
+  }
+
+  function ouvrirBienvenue(){
+    const overlay = $("#welcomeOverlay");
+    if(!overlay) return;
+    overlay.classList.add("show");
+    overlay.setAttribute("aria-hidden", "false");
+    document.body.classList.add("modal-open");
+  }
+
+  function fermerBienvenue(){
+    const overlay = $("#welcomeOverlay");
+    if(!overlay) return;
+    overlay.classList.remove("show");
+    overlay.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("modal-open");
+    marquerBienvenueVue();
+  }
+
+  function initBienvenue(){
+    const overlay = $("#welcomeOverlay");
+    const start = $("#welcomeStartBtn");
+    const help = $("#helpBtn");
+
+    if(start) start.addEventListener("click", fermerBienvenue);
+    if(overlay){
+      overlay.addEventListener("click", (e) => {
+        if(e.target === overlay) fermerBienvenue();
+      });
+    }
+    document.addEventListener("keydown", (e) => {
+      if(e.key === "Escape" && overlay && overlay.classList.contains("show")){
+        fermerBienvenue();
+      }
+    });
+    if(help) help.addEventListener("click", ouvrirBienvenue);
+
+    if(!welcomeDejaVue()) ouvrirBienvenue();
+  }
+
+  /* ============================================================
      NAVIGATION
      ============================================================ */
 
@@ -3115,6 +3167,7 @@
     initEtude();
     initFlashcards();
     initAssistant();
+    initBienvenue();
     renderSuivi();
     $("#calcCount").textContent = store.calcCount || 0;
 
