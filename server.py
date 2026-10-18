@@ -491,6 +491,27 @@ def _image_cloudflare(prompt):
     return None
 
 
+
+def _sauver_et_url(empreinte, chemin, b64, source):
+    """Sauvegarde l'image sur disque et renvoie une URL légère (cache navigateur)."""
+    import base64 as _b64
+    try:
+        if not os.path.exists(chemin):
+            with open(chemin, "wb") as f:
+                f.write(_b64.b64decode(b64))
+    except Exception:
+        pass
+    return jsonify(ok=True, source=source,
+                   url="/img/" + empreinte + ".jpg",
+                   image="data:image/jpeg;base64," + b64)
+
+
+@app.route("/img/<path:nom>")
+@login_required
+def img_cache(nom):
+    return send_from_directory(os.path.join(BASE, "images"), nom)
+
+
 @app.route("/api/ai/image", methods=["POST"])
 @login_required
 def api_ai_image():
@@ -522,14 +543,14 @@ def api_ai_image():
     if os.path.exists(chemin):
         with open(chemin, "rb") as f:
             octets = f.read()
-        return jsonify(ok=True, source="cache",
-                       image="data:image/jpeg;base64," + base64.b64encode(octets).decode())
+        return _sauver_et_url(empreinte, chemin, base64.b64encode(octets).decode(), "cache")
 
     # 1bis) Cloudflare Workers AI (gratuit, rapide) si configuré
     try:
         img_cf = _image_cloudflare(complet)
         if img_cf:
-            return jsonify(ok=True, source="cloudflare", image=img_cf)
+            b64 = img_cf.split(",", 1)[-1]
+            return _sauver_et_url(empreinte, chemin, b64, "cloudflare")
     except Exception:
         pass
 
@@ -551,8 +572,7 @@ def api_ai_image():
                 inline = p.get("inlineData") or p.get("inline_data")
                 if inline and inline.get("data"):
                     mime = inline.get("mimeType", "image/png")
-                    return jsonify(ok=True, source="gemini",
-                                   image="data:%s;base64,%s" % (mime, inline["data"]))
+                    return _sauver_et_url(empreinte, chemin, inline["data"], "gemini")
         except Exception:
             pass
 
@@ -576,8 +596,7 @@ def api_ai_image():
     except Exception:
         pass
 
-    return jsonify(ok=True, source="pollinations",
-                   image="data:image/jpeg;base64," + base64.b64encode(octets).decode())
+    return _sauver_et_url(empreinte, chemin, base64.b64encode(octets).decode(), "pollinations")
 
 
 # --------------------------------------------------------------------------
@@ -739,7 +758,7 @@ def index():
     return send_from_directory(BASE, "index.html")
 
 
-FICHIERS_AUTORISES = {"index.html", "style.css", "app.js"}
+FICHIERS_AUTORISES = {"index.html", "style.css", "app.js", "manifest.json", "icon.svg", "sw.js"}
 
 
 @app.route("/<path:nom>")

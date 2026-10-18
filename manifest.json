@@ -1,0 +1,15 @@
+{
+  "name": "Quai — Révision BT TLT",
+  "short_name": "Quai",
+  "description": "L'application de révision du BT Transport Logistique Transit",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0616",
+  "theme_color": "#0a0616",
+  "lang": "fr",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

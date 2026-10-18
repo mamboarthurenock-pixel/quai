@@ -785,8 +785,8 @@
       });
       let data = null;
       try{ data = await res.json(); }catch(e){ data = null; }
-      if(!res.ok || !data || !data.ok || !data.image) return;
-      setTrailerCache(i, data.image);
+      if(!res.ok || !data || !data.ok || !(data.url || data.image)) return;
+      setTrailerCache(i, (data.url || data.image));
       // Met à jour toutes les cartes correspondantes (dupliquées)
       $$(`.trailer-card[data-trailer="${i}"]`).forEach(card => {
         const loading = card.querySelector(".trailer-loading");
@@ -795,7 +795,7 @@
           const img = document.createElement("img");
           img.alt = titre;
           img.addEventListener("load", () => img.classList.add("loaded"));
-          img.src = data.image;
+          img.src = (data.url || data.image);
           card.insertBefore(img, card.firstChild);
         }
       });
@@ -1048,11 +1048,11 @@
       });
       let data = null;
       try{ data = await res.json(); }catch(e){ data = null; }
-      if(!res.ok || !data || !data.ok || !data.image) return;
-      setTrailerCache(i, data.image);
+      if(!res.ok || !data || !data.ok || !(data.url || data.image)) return;
+      setTrailerCache(i, (data.url || data.image));
       // Remplace les placeholders de cette escale (2 occurrences)
       $$(`.trailer-card[data-idx="${i}"] .trailer-img-wrap`).forEach(wrap => {
-        wrap.innerHTML = `<img class="trailer-img" src="${escapeHtml(data.image)}" alt="${escapeHtml(t.titre)}">`;
+        wrap.innerHTML = `<img class="trailer-img" src="${escapeHtml((data.url || data.image))}" alt="${escapeHtml(t.titre)}">`;
       });
     }catch(e){}
   }
@@ -3266,11 +3266,11 @@
     });
     let data = null;
     try{ data = await res.json(); }catch(e){ data = null; }
-    if(!res.ok || !data || !data.ok || !data.image){
+    if(!res.ok || !data || !data.ok || !(data.url || data.image)){
       throw new Error((data && data.error) || "Image indisponible");
     }
-    try{ localStorage.setItem(cacheKey, data.image); }catch(e){}
-    return data.image;
+    try{ localStorage.setItem(cacheKey, (data.url || data.image)); }catch(e){}
+    return (data.url || data.image);
   }
 
   /* ============================================================
@@ -3504,11 +3504,11 @@
     });
     let data = null;
     try{ data = await res.json(); }catch(e){ data = null; }
-    if(!res.ok || !data || !data.ok || !data.image){
+    if(!res.ok || !data || !data.ok || !(data.url || data.image)){
       throw new Error((data && data.error) || "Image indisponible");
     }
-    setVocabImg(en, data.image);
-    return data.image;
+    setVocabImg(en, (data.url || data.image));
+    return (data.url || data.image);
   }
 
   async function playVocabAudio(en){
@@ -3971,7 +3971,7 @@
     });
     if(help) help.addEventListener("click", ouvrirBienvenue);
 
-    if(!welcomeDejaVue()) ouvrirBienvenue();
+    // if(!welcomeDejaVue()) ouvrirBienvenue(); // désactivé : l'intro accueille déjà
   }
 
   /* ============================================================
@@ -4058,9 +4058,9 @@
       });
       let data = null;
       try{ data = await res.json(); }catch(e){ data = null; }
-      if(!res.ok || !data || !data.ok || !data.image) return;
-      setBannerCache(tab, data.image);
-      if(banner && banner.isConnected) afficherBanner(banner, data.image);
+      if(!res.ok || !data || !data.ok || !(data.url || data.image)) return;
+      setBannerCache(tab, (data.url || data.image));
+      if(banner && banner.isConnected) afficherBanner(banner, (data.url || data.image));
     }catch(e){}
   }
 
@@ -4250,11 +4250,11 @@
           body: JSON.stringify({prompt:"photo réaliste, " + t.titre + ", Côte d'Ivoire, logistique, 16:9"})
         });
         const data = await res.json();
-        if(!data || !data.ok || !data.image) return;
-        setTrailerCache(i, data.image);
+        if(!data || !data.ok || !(data.url || data.image)) return;
+        setTrailerCache(i, (data.url || data.image));
         const box = $("#escaleImg");
         if(box && _escaleIdx === i){
-          box.innerHTML = `<img src="${escapeHtml(data.image)}" alt="${escapeHtml(t.titre)}">`;
+          box.innerHTML = `<img src="${escapeHtml((data.url || data.image))}" alt="${escapeHtml(t.titre)}">`;
         }
       }catch(e){}
     }).catch(()=>{});
@@ -4316,9 +4316,9 @@
         body: JSON.stringify({prompt: m.prompts[k]})
       });
       const data = await res.json();
-      if(!data || !data.ok || !data.image) return null;
-      try{ localStorage.setItem(modeCle(m, k), data.image); }catch(e){}
-      return data.image;
+      if(!data || !data.ok || !(data.url || data.image)) return null;
+      try{ localStorage.setItem(modeCle(m, k), (data.url || data.image)); }catch(e){}
+      return (data.url || data.image);
     }catch(e){ return null; }
   }
 
@@ -4373,6 +4373,10 @@
   }
   var skip = document.getElementById("introSkip");
   if(skip) skip.addEventListener("click", fermer);
+  // Fermer au moindre tap n'importe où (mobile inclus)
+  intro.addEventListener("click", fermer);
+  intro.addEventListener("touchstart", fermer, {passive:true});
+  document.addEventListener("keydown", function(e){ if(e.key === "Escape") fermer(); });
   setTimeout(fermer, 90500);
   try{
     if(localStorage.getItem("introVu") === "1"){
@@ -4392,3 +4396,26 @@
     setTimeout(fermer, 90500);
   };
 })();
+
+
+/* Nettoyage : supprime les anciennes images base64 du localStorage (quota) */
+(function(){
+  try{
+    var prefixes = ["trailer:","mode:","vocab:","banner:","img:"];
+    Object.keys(localStorage).forEach(function(k){
+      if(!prefixes.some(function(p){ return k.indexOf(p) === 0; })) return;
+      try{
+        var v = localStorage.getItem(k);
+        if(v && v.length > 100000) localStorage.removeItem(k);
+      }catch(e){}
+    });
+  }catch(e){}
+})();
+
+
+/* PWA : service worker (installation Android) */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function(){
+    navigator.serviceWorker.register("/sw.js").catch(function(){});
+  });
+}
