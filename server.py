@@ -91,8 +91,9 @@ def db():
 
 
 def init_db():
-    conn = db()
+    conn = None
     try:
+        conn = db()
         if USE_PG:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS users (
@@ -117,7 +118,11 @@ def init_db():
     except Exception as e:
         print("init_db:", e)
     finally:
-        conn.close()
+        try:
+            if conn is not None:
+                conn.close()
+        except Exception:
+            pass
 
 
 # Création de la table au démarrage (gunicorn inclus)
