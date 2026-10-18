@@ -3904,6 +3904,12 @@
 
     // Bannière de l'onglet actif au démarrage
     const activeTab = document.querySelector(".tab.active");
+    if(activeTab && activeTab.id && activeTab.id.indexOf("tab-") === 0){
+      ensureBanner(activeTab.id.slice(4));
+    }
+
+    // Bannière de l'onglet actif au démarrage
+    const activeTab = document.querySelector(".tab.active");
     if(activeTab && activeTab.id.indexOf("tab-") === 0){
       ensureBanner(activeTab.id.slice(4));
     }
