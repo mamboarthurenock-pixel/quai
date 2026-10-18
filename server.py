@@ -323,6 +323,25 @@ LOGIN_HTML = r"""<!DOCTYPE html>
 """
 
 
+
+
+@app.route("/health")
+def health():
+    info = {"ok": True, "pg": USE_PG}
+    try:
+        import psycopg2
+        info["psycopg2"] = psycopg2.__version__
+    except Exception as e:
+        info["psycopg2"] = "absent"
+    try:
+        c = db()
+        c.execute("SELECT 1")
+        c.close()
+        info["db"] = "ok"
+    except Exception as e:
+        info["db"] = str(e)[:300]
+    return jsonify(info)
+
 @app.route("/login")
 def login_page():
     if utilisateur_connecte():
