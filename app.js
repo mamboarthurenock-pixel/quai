@@ -3010,6 +3010,51 @@
     try{ localStorage.setItem(etudeCacheKey(fichier), JSON.stringify(fiche)); }catch(e){}
   }
 
+  /* ---------- Illustration de fiche (cache + génération) ---------- */
+
+  function imgCacheKey(titre){
+    return "img:" + titre;
+  }
+
+  function getImgCache(titre){
+    try{ return localStorage.getItem(imgCacheKey(titre)) || null; }catch(e){ return null; }
+  }
+
+  function setImgCache(titre, dataUrl){
+    try{ localStorage.setItem(imgCacheKey(titre), dataUrl); }catch(e){}
+  }
+
+  async function genererImageFiche(matiere, titre){
+    const cached = getImgCache(titre);
+    if(cached) return cached;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 45000);
+    try{
+      const res = await fetch("/api/ai/image", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        credentials: "same-origin",
+        signal: controller.signal,
+        body: JSON.stringify({
+          prompt: "illustration pédagogique, " + (matiere || "") + " : " + titre
+        })
+      });
+      let data = null;
+      try{ data = await res.json(); }catch(e){ data = null; }
+      if(!res.ok || !data || !data.ok){
+        const msg = (data && (data.error || data.message)) || ("Erreur serveur (" + res.status + ")");
+        throw new Error(msg);
+      }
+      const img = data.image || data.dataUrl || data.url || "";
+      if(!img) throw new Error("Image vide");
+      setImgCache(titre, img);
+      return img;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
   async function initEtude(){
     const selMat = $("#etudeMatiere");
     const selCours = $("#etudeCours");
