@@ -1,0 +1,27 @@
+Ajoute un système de QUIZ complet et intelligent à l'app LPCC Companion.
+
+1. index.html : ajoute un nouvel onglet "Quiz" dans la barre de navigation,
+   avec <section id="tab-quiz"> contenant une zone #quizZone.
+
+2. app.js : crée un moteur de quiz avec :
+   - une banque de questions par matière. Mets au moins 3 questions réelles
+     pour chacune de ces matières : GDOD (douanes), TRF (ferroviaire),
+     TAM (aérien), DROIT, TEF, ANG, MATH, ECO ENT.
+     Format : {matiere, q, options:[4], bonne:index, explication}
+     Exemples réels (GDOD) :
+       - "Quels sont les 3 éléments déclaratifs en douane ?" options:
+         ["Espèce, Origine, Valeur","Poids, Volume, Prix","FOB, CAF, CIF","DD, TVA, PCS"], bonne:0
+       - "Valeur en douane =" options: ["FOB seul","CIF = FOB+fret+assurance","Prix de détail","La TVA"], bonne:1
+       - "Séries de régimes IM :" options: ["1000/2000/3000","4000/4070/4080/5000/7000/8000","A/B/C","1/2/3"], bonne:1
+     Exemples (TRF) : "Voie SITARAIL ?" -> "Voie métrique" ; "Traction ?" -> "Thermique diesel" ;
+       "Feuillets de la liasse DEX ?" -> "7".
+     Exemples (TAM) : "EC 21 =" -> "Élaborer un plan de transport aérien" ; etc.
+   - affichage : question, 4 boutons de choix, feedback immédiat (vert/rouge),
+     explication affichée après réponse, impossible de re-cliquer.
+   - score en temps réel + barre de progression.
+   - à la fin : note /20, message selon le score, bouton "Recommencer".
+   - sauvegarde du meilleur score par matière dans localStorage.
+   - sélecteur de matière (boutons) avant de commencer.
+
+3. style.css : ajoute les styles du quiz (carte de question, boutons de choix,
+   états bon/faux, barre de progression, écran de score, sélecteur de matière).

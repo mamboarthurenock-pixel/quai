@@ -1,0 +1,20 @@
+Ajoute le "CŒUR" : corrections bienveillantes + bouton "Explique-moi" + encouragements.
+
+1. Corrections douces dans le quiz (fonction answerQuiz) : remplacer les messages
+   négatifs par des messages bienveillants :
+   - "Presque ! La bonne réponse est : …"
+   - "Pas encore, mais tu progresses. La bonne réponse : …"
+   Toujours afficher l'explication. Couleurs douces (ambre/vert), jamais de rouge agressif.
+
+2. Bouton "💡 Explique-moi" affiché après une mauvaise réponse :
+   - appelle fetch("/api/ai/chat") avec un message contextualisé
+     (la question, la mauvaise réponse, la bonne réponse, le cours s'il est connu)
+   - affiche la réponse du coach dans la carte.
+   - 3 petits boutons : "Simple", "Détaillé", "Exemple" qui relancent avec un
+     prompt différent (ex: "Explique en 2 phrases très simples", "Explique en détail",
+     "Donne un exemple concret du port d'Abidjan").
+
+3. Encouragements après un quiz : message selon le score
+   (< 8 : "Courage, on révise ensemble" ; 8-14 : "Tu progresses" ; >14 : "Bravo Mambo !").
+
+4. style.css : .correction-douce, .explique-btn, .explique-niveaux, .encouragement.

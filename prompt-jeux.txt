@@ -1,0 +1,33 @@
+Ajoute un onglet "Jeux" avec 3 jeux complets, en gardant le design actuel.
+
+1. index.html : ajoute un 6e bouton de navigation data-tab="games" avec le
+   libellé "Jeux", et une <section class="tab" id="tab-games"> contenant
+   <div id="gamesContent"></div>.
+
+2. app.js : ajoute la logique des 3 jeux (dans une zone dédiée, sans casser
+   le reste). Utilise les questions déjà présentes dans l'app si possible,
+   sinon crée une petite banque.
+
+   JEU 1 — LA ROUE DES MATIÈRES :
+   - une roue CSS (conic-gradient) avec les matières.
+   - bouton "Tourner" qui anime la roue (rotation aléatoire, transition 3s).
+   - s'arrête sur une matière → affiche une question de cette matière.
+   - répondre → points (+10 si bon), feedback, bouton "Rejouer".
+
+   JEU 2 — LE PENDU DES SIGLES :
+   - choisit un sigle TLT au hasard (GDOD, TEC, DAU, RSTA, TVA, PCS, PCC,
+     PUA, CIF, FOB, SYDAM, GUCE, PAA, SITARAIL, GESTOCI, DEX, FHB, CMR).
+   - affiche des tirets, clavier A-Z cliquable, 7 erreurs max.
+   - dessine le pendu en SVG (ou compte les erreurs).
+   - victoire → points, nouvelle manche.
+
+   JEU 3 — COURSE CONTRE LA MONTRE :
+   - 60 secondes au compteur.
+   - une question à la fois (réutilise la banque du quiz).
+   - chaque bonne réponse +1, mauvaise -1 (pas en dessous de 0).
+   - score final + record sauvegardé dans localStorage.
+
+3. style.css : ajoute les styles des 3 jeux (roue, clavier du pendu, chrono,
+   boutons, cartes, effets de lueur cohérents avec le design actuel).
+
+Garde tout le reste intact.

@@ -1,0 +1,29 @@
+Ajoute un onglet "Assistant" (Coach IA) et un système de Voix Off.
+
+1. index.html : ajoute un bouton de nav data-tab="assistant" avec le libellé
+   "Assistant" (icône bulle de dialogue SVG), et une
+   <section class="tab" id="tab-assistant"> contenant :
+   - un en-tête "Coach IA — DeepSeek"
+   - une zone de messages <div id="chatMessages"></div>
+   - un sélecteur de vitesse de lecture : 3 boutons data-vitesse="0.5" (0,5×),
+     data-vitesse="1" (1×), data-vitesse="2" (2×) — le actif par défaut est 1.
+   - une zone de saisie : <textarea id="chatInput"> + <button id="chatSend">Envoyer</button>
+   - un bouton "Stop" pour arrêter la lecture.
+
+2. app.js :
+   - Fonction envoyerMessage() : lit #chatInput, ajoute le message utilisateur
+     dans #chatMessages, affiche "Coach réfléchit…", appelle
+     fetch("/api/ai/chat", {method:"POST", headers:{"Content-Type":"application/json"},
+     body: JSON.stringify({message})}) puis affiche la réponse.
+   - Gère les erreurs (affiche le message d'erreur).
+   - Chaque message du coach a un bouton "🔊 Écouter" qui lit le texte via
+     window.speechSynthesis (lang fr-FR, rate = vitesse choisie).
+   - Variable globale vitesseLecture (0.5, 1, 2), mise à jour par les boutons
+     de vitesse (classe .active sur le bouton choisi).
+   - Bouton Stop : speechSynthesis.cancel().
+   - Empêche l'envoi vide, Entrée = envoyer (Shift+Entrée = nouvelle ligne).
+   - Vérifie que l'API speechSynthesis existe ; sinon message d'aide.
+
+3. style.css : ajoute les styles du chat (bulles utilisateur/coach, zone de
+   saisie, boutons de vitesse, bouton Écouter, état "réfléchit", responsive),
+   cohérents avec le design actuel (violet/cyan/rose, glassmorphism).

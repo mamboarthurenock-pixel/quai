@@ -1,0 +1,15 @@
+Mets des images partout dans l'app (via /api/ai/image, cache localStorage).
+
+1. Onglet AUJOURD'HUI : une grande image hero en haut de la section,
+   prompt "photo réaliste, port d'Abidjan, grues, conteneurs, lumière dorée, 16:9",
+   cache "hero". Image avec border-radius 22px, ombre, overlay dégradé sombre,
+   et le titre par-dessus. Si échec : dégradé CSS de secours.
+
+2. Onglet COURS : chaque carte de cours a une vignette 120x72 générée selon la
+   matière (prompt "photo réaliste, " + matiere + ", transport logistique,
+   Abidjan"), cache "thumb:" + matiere. Lazy : ne générer qu'à l'affichage
+   (IntersectionObserver ou au premier scroll), file d'attente 1 par 1
+   (Pollinations limite à 1 image/45s) — afficher un placeholder dégradé
+   en attendant.
+
+3. style.css : .hero-img, .course-thumb, placeholders.

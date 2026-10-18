@@ -1,0 +1,10 @@
+.env
+*.db
+.session_secret
+cours_json/
+images/
+*.png
+.aider*
+hello.txt
+__pycache__/
+*.pyc

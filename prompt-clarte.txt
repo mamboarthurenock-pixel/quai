@@ -1,0 +1,15 @@
+Ajoute la CLARTÉ : écran de bienvenue + guide "Comment ça marche".
+
+1. Écran de bienvenue (modale, au 1er lancement si localStorage "bienvenue" absent) :
+   - logo + "Bienvenue Mambo" + 4 étapes avec icône et 1 phrase :
+     📚 Cours : tes 44 cours importés
+     🧠 Étude : fiches À retenir + cartes du jour
+     🎮 Jeux : 8 jeux pour réviser en t'amusant
+     🎤 Assistant : le coach IA qui t'explique
+   - bouton "Commencer" qui ferme et met bienvenue=1.
+
+2. Bouton "?" dans le header (à côté de la déconnexion) qui rouvre le guide.
+
+3. Sous le titre de chaque onglet, une phrase d'explication courte (si absente).
+
+4. style.css : modale (fond flouté, carte glassmorphism), étapes, bouton.

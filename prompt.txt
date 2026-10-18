@@ -1,0 +1,30 @@
+Crée un fichier unique `index.html`, autonome (aucune dépendance externe, fonctionne hors-ligne), en français, pour une app d'étude appelée « LPCC Companion ».
+
+DESIGN (thème sombre « Le Quai ») :
+- fond #070c17, cartes #0f1729, accent turquoise #2dd4bf, texte #eef2fa, secondaire #93a4c4, ambre #fbbf24, vert #34d399, rose #fb7185
+- typo system-ui + chasse fixe pour les horaires
+- style premium, calme, adulte, pas enfantin
+- 4 onglets en bas (mobile) : Aujourd'hui, Soir, Cours, Coach
+
+CONTENU :
+1. En-tête collant : logo « LP », titre « LPCC Companion », date du jour + horloge en direct
+2. Onglet AUJOURD'HUI : la journée affichée comme une LIGNE DE MÉTRO verticale (rail 2px, un rond par cours, le cours en cours en turquoise plein avec halo pulsant, les passés grisés, l'heure à gauche, matière + professeur à droite)
+3. Onglet SOIR : préparation du lendemain (les matières du jour suivant avec une fiche à puces)
+4. Onglet COURS : barre de recherche + liste des 51 matières classées 1BT/2BT/3BT + dictionnaire des sigles TLT
+5. Onglet COACH : simulateur de liquidation douanière (FOB + fret + assurance = CIF, puis DD 10%, RSTA 1%, TVA 18% sur CIF+DD+RSTA, avec bouton « Calculer » et détail des calculs) + convertisseur FCFA (1 EUR = 656 FCFA, 1 USD = 605 FCFA)
+
+EMPLOI DU TEMPS (3 BT, réel) :
+Lundi : 07h30-09h10 TRF (Mme Kouacou), 09h10-10h50 Droit (Mme Kouassi), 10h50-12h30 GOL (M. Yao Kouassi), 13h20-14h10 CMC (Mme Koné), 14h10-15h00 TEF (M. Jean-Baptiste)
+Mardi : 07h30-09h10 TEF, 09h10-10h50 TRM (Mme Bamba), 10h50-12h30 Éco Ent (Mme Kaba), 13h20-15h00 EPS (M. Nahanonan)
+Mercredi : 07h30-10h50 TMM (M. Yao Konan), 10h50-12h30 Entrepreneuriat (M. Kamaté)
+Jeudi : 07h30-09h10 GDOD (M. Drouin), 09h10-10h50 Maths (Mme Toussea), 10h50-12h30 TRV (Mme Kouacou), 13h20-15h00 Éco Gén (M. Néné Bi)
+Vendredi : 07h30-10h50 TAM (M. Esse), 10h50-12h30 Anglais (M. Kouassi Adjoumani), 13h20-15h00 EPS
+
+MATIÈRES (51 au total, avec icône emoji simple) :
+3BT (20) : ANGLAIS, CMC, DROIT, ÉCO ENT, ÉCO GÉN, EDHC, EPS, ENTREPRENEURIAT, GDOD, INFORMATIQUE, MATHS, TAM, TEF, TRANSPORT FERROVIAIRE, TRANSPORT MARITIME, TRANSPORT ROUTIER SPÉCIFIQUES, TRANSPORT ROUTIER MARCHANDISES ET VOYAGEURS, TRANSPORT ROUTIER MARCHANDISES, LOGISTIQUE, TRANSPORT ROUTIER VOYAGEURS
+2BT (14) : TEF, ANGLAIS, MATHS GÉN, MATHS APPLIQUÉES, DROIT COMMERCIAL, ÉCO ENT, ÉCO GÉN, INFORMATIQUE, EDHC, EPS, CONDUITE, GDOD, TFMV, GESTION DES ENTREPÔTS
+1BT (17) : INFORMATIQUE, EPS, EDHC, ÉCO ENT, DROIT, CMC, ANGLAIS, ENTREPRENEURIAT, VIE FAMILIALE, TEF, MATHS GÉN, MATHS APPLIQUÉES, CONDUITE, ITINÉRAIRES, PLANIFICATION TRANSPORT, AFFECTATION MOYENS, GESTION DES ENTREPÔTS
+
+SIGLES (dictionnaire) : GDOD, TEC, DAU, DD, RSTA, TVA, PCS, PCC, PUA, CIF, FOB, FDI, BSC, SYDAM, GUCE, PAA, TC1, TC2, SITARAIL, GESTOCI, TPAV, PCCC, DEX, FHB, CMR, OHADA, CNMCI, CEPICI, FIDEN.
+
+Utilise localStorage pour mémoriser les scores du simulateur et les quiz. Animation CSS (halo pulsant, apparition douce). Tout dans UN SEUL fichier index.html, CSS dans <style>, JS dans <script>.

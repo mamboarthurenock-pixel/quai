@@ -1,0 +1,20 @@
+Branche les cours réels importés dans l'onglet "Cours".
+
+Au chargement de l'onglet Cours, appelle fetch("/api/cours") (credentials same-origin).
+La réponse est {ok:true, cours:[{niveau, matiere, fichier, caracteres, texte}]}.
+
+Affiche :
+1. Une barre de recherche (#searchInput existante) qui filtre par matière,
+   fichier ou contenu.
+2. Les cours groupés par MATIÈRE (titre de section), puis par niveau (badge).
+3. Chaque cours = une carte cliquable avec : le nom du fichier (nettoyé),
+   la matière, le niveau (badge coloré), et la taille (ex: "3 400 car.").
+4. Au clic sur une carte : ouvre un lecteur plein écran (ou panneau) qui affiche
+   le texte du cours (pré-formatté, lisible, max-width 70ch), avec :
+   - un bouton "← Retour" pour revenir à la liste
+   - un bouton "🔊 Écouter" qui appelle window.lireTexte(texte)
+   - le titre du cours en haut
+5. Si aucun cours : état vide "Aucun cours importé — ajoute tes fichiers".
+
+Garde le reste de l'app intact. Le texte affiché doit être échappé (pas d'injection).
+Ajoute les styles nécessaires (cartes de cours, lecteur, badges de niveau).

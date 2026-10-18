@@ -1,0 +1,15 @@
+Ajoute l'onglet "Anglais" (vocabulaire visuel TLT).
+
+1. index.html : bouton data-tab="anglais" + <section class="tab" id="tab-anglais">.
+2. app.js : ajoute const VOCAB avec ces thèmes et mots (en / fr / ex) :
+   PORT : port/port, crane/grue, container/conteneur, dock/quai, ship/navire, cargo/cargaison, berth/poste d'amarrage, stevedore/docker (ex court pour chacun)
+   TRANSPORT : truck/camion, train/train, plane/avion, warehouse/entrepôt, freight/fret, route/itinéraire, driver/chauffeur, loading/chargement
+   DOUANE : customs/douane, duty/droit, tariff/tarif, declaration/déclaration, invoice/facture, clearance/dédouanement, inspection/inspection, value/valeur
+   ENTREPRISE : order/commande, client/client, supplier/fournisseur, price/prix, contract/contrat, stock/stock, profit/bénéfice, budget/budget
+   - Onglet : 4 boutons de thème + grille de cartes.
+   - Carte : <img> généré via /api/ai/image {prompt:"photo réaliste, "+en+", port d'Abidjan"} (cache localStorage "vocab:"+en),
+     le mot anglais en grand, la traduction, un bouton 🔊 qui fetch /api/tts {text:en, lang:"en", speed:1} et joue,
+     et la phrase d'exemple.
+   - Bouton "🎯 Exercice" : Photo→Mot (une image, 4 mots) et Mot→Photo (un mot, 4 images).
+   - Score + feedback doux.
+3. style.css : grille vocab, cartes, bouton audio, exercice.

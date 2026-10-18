@@ -1,0 +1,11 @@
+Ajoute les IMAGES dans les fiches "À retenir" (onglet Étude).
+
+1. Dans le rendu de la fiche, ajoute une zone image + un bouton "🎨 Illustration" :
+   - au clic : fetch("/api/ai/image", {prompt: "illustration pédagogique, " + matiere + " : " + titre})
+   - pendant : spinner/état "Génération…"
+   - affiche l'image (data:image/...) avec un cadre arrondi + ombre + fade-in.
+   - cache localStorage "img:" + titre pour éviter de régénérer.
+   - si erreur (limite 45s) : message doux "Réessaie dans un instant".
+
+2. style.css : .fiche-image (max-width:100%, border-radius, ombre, animation fadeIn),
+   .fiche-image-wrap, .btn-img.

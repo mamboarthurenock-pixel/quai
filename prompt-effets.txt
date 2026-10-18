@@ -1,0 +1,32 @@
+Améliore style.css pour rendre l'app SPECTACULAIRE, avec des effets lumineux
+premium. Garde tout ce qui existe, ajoute/renforce :
+
+1. GLASSMORPHISM : sur .card et les panneaux, ajoute
+   background: rgba(15,23,41,0.55); backdrop-filter: blur(14px) saturate(1.2);
+   -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(45,212,191,0.18);
+
+2. LUEURS NÉON : sur les titres h1/.hero-title ajoute
+   text-shadow: 0 0 18px rgba(45,212,191,0.55), 0 0 40px rgba(45,212,191,0.25);
+   Sur la station active de la ligne de métro : box-shadow en halo multiple.
+
+3. DÉGRADÉS ANIMÉS : sur body, un dégradé 400% qui se déplace
+   (@keyframes shiftBg { 0%{background-position:0% 50%} 100%{background-position:200% 50%} })
+   animation: shiftBg 22s linear infinite; (respecte prefers-reduced-motion).
+
+4. PARTICULES : ajoute un élément décoratif .particles en position fixed
+   avec des petits points lumineux (radial-gradient répété) qui dérivent
+   lentement vers le haut (@keyframes floatUp), opacité très faible (0.12).
+
+5. SURVOL : sur .card:hover, transform: translateY(-4px) + ombre
+   box-shadow: 0 20px 40px -20px rgba(45,212,191,0.45); transition 240ms.
+
+6. BORDURE LUMINEUSE : sur .card::before, un liseré en dégradé
+   (linear-gradient(90deg, transparent, rgba(45,212,191,0.5), transparent))
+   qui apparaît au survol.
+
+7. SHIMMER sur .hero-title via un ::after avec un dégradé qui balaie
+   (@keyframes shimmer), en boucle lente.
+
+8. Ajoute une classe .glow et .reveal (opacity 0 → 1 sur .reveal.active).
+
+Ne change QUE style.css. Ne touche pas au HTML ni au JS.

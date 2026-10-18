@@ -1,0 +1,18 @@
+Ajoute 5 jeux dans l'onglet Jeux (à côté des 3 existants).
+
+1. MATCH DES TAUX : relier taxe <-> taux (DD 10%, RSTA 1%, TVA 18%, PCS 0,5%, PCC 0,8%).
+   Deux colonnes de boutons ; on clique une taxe puis un taux. Bon = vert, faux = doux.
+   Score +1 par bonne paire.
+
+2. CLASSER LES INCOTERMS : 6 cartes (EXW, FCA, FOB, CIF, DAP, DDP) à placer dans
+   2 tas : "Vendeur paie peu" / "Vendeur paie tout". Clic carte puis tas. Score.
+
+3. QUI VEUT GAGNER : 5 questions de difficulté croissante, 3 jokers (50/50,
+   appel à un ami = /api/ai/chat, public = indice). Score.
+
+4. DUEL : 5 questions contre l'IA (bonne réponse aléatoire 70%). Affiche les 2 scores.
+
+5. MEMORY : 6 paires (sigle <-> signification) retournées 2 par 2, score = essais.
+
+Chaque jeu : carte dans le menu Jeux, écran de jeu, score, bouton "Rejouer".
+style.css : styles cohérents (grilles, cartes, états bon/faux).

@@ -1,0 +1,12 @@
+Ajoute les BONUS : Défi du jour + Mode examen.
+
+1. DÉFI DU JOUR : bloc en haut de l'onglet Aujourd'hui :
+   - 3 questions choisies par date (seed AAAAMMJJ), non vues en priorité.
+   - À la fin : score + message bienveillant + localStorage "defi:"+date.
+   - Si déjà fait : "Déjà relevé aujourd'hui ✅".
+
+2. MODE EXAMEN : dans l'onglet Quiz, bouton "Mode examen" :
+   - 30 questions (non-vues d'abord), 20 minutes, chrono + barre de progression.
+   - À la fin : note /20, bonnes/mauvaises, bouton "Rejouer".
+
+3. style.css : styles défi + examen.

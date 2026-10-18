@@ -1,0 +1,15 @@
+Ajoute le SUIVI : maîtrise par matière + carnet d'erreurs + note prédite.
+
+1. Données (localStorage) :
+   - "progress" = {matiere: {vues, bonnes, mauvaises}}
+   - "errors" = [{matiere, q, options, bonne, explication, date}] (max 100, sans doublon sur q)
+   - Dans answerQuiz : vues++ ; bonne -> bonnes++ ; mauvaise -> mauvaises++ et push errors.
+
+2. Onglet Étude, nouvelle section "Suivi" :
+   - Liste des matières avec barre de progression (% = bonnes/vues) et badge
+     (Débutant <40%, En progrès 40-70%, Solide >70%).
+   - Note prédite : moyenne pondérée des % -> /20 + message bienveillant.
+   - Carnet d'erreurs : questions ratées, bouton "Revoir" qui relance la question.
+   - Bouton "Vider mes données" (avec confirmation).
+
+3. style.css : barres de progression, badges, carte note prédite, liste d'erreurs.

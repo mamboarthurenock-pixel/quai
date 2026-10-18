@@ -1,0 +1,42 @@
+Refais COMPLÈTEMENT le design de index.html pour qu'il soit MAGNIFIQUE, premium,
+moderne, avec des effets visuels et des illustrations SVG. Garde tout le contenu
+(51 matières, emploi du temps, simulateur douane, convertisseur FCFA, sigles, quiz)
+mais rends-le spectaculaire.
+
+STYLE PREMIUM « LE QUAI » :
+- Fond bleu nuit #070c17 avec 2 dégradés radiaux (turquoise en haut à droite,
+  bleu en bas à gauche), très subtils.
+- Cartes en glassmorphism : fond rgba(15,23,41,.7), backdrop-filter blur(12px),
+  bordure 1px rgba(45,212,191,.15), ombre douce.
+- Accent turquoise #2dd4bf avec halos (box-shadow 0 0 20px rgba(45,212,191,.35),
+  text-shadow sur les titres).
+- Grands titres fins (font-weight 300-600), chasse fixe (ui-monospace) pour
+  TOUS les horaires et montants.
+- Beaucoup d'espace, aéré, luxueux.
+
+ILLUSTRATIONS SVG INLINE (aucune image externe, tout doit marcher hors-ligne) :
+- Un hero en haut avec une illustration SVG animée du port d'Abidjan
+  (grues, conteneurs, navire, eau qui ondule).
+- Des icônes SVG pour chaque type de transport : navire, avion, train, camion,
+  conteneur, balance (droit), tampon (douane), sigma (maths), plume (TEF).
+- Un motif de vagues/lignes en fond de section.
+
+EFFETS ET ANIMATIONS CSS (@keyframes) :
+- fadeInUp en cascade sur les cartes (décalage 60ms).
+- pulse/glow sur le cours en cours et sur les accents.
+- float léger sur les icônes du hero.
+- shimmer (dégradé qui balaie) sur le titre principal.
+- Dégradé animé en fond (background-position animé, 8s).
+- Le rail de la ligne de métro avec un point lumineux qui avance.
+- Survol des cartes : translateY(-3px) + ombre turquoise.
+- Boutons avec effet de lueur au survol.
+- respecter prefers-reduced-motion.
+
+STRUCTURE :
+- Header sticky avec logo, date, horloge live.
+- Nav en bas (mobile) ou latérale (desktop) avec effet de verre.
+- Onglet AUJOURD'HUI : hero illustré + Ligne du jour en métro vertical.
+- Onglet SOIR, COURS, COACH : cartes premium, mêmes effets.
+- Responsive 360px → 1440px.
+
+Tout dans UN SEUL fichier index.html (CSS dans <style>, SVG inline, JS dans <script>).

@@ -40,14 +40,6 @@
   const DAY_NAMES = ["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
 
   // Escales (bandeau défilant sous le cinéma)
-  const TRAILERS = [
-    {titre:"Le Port d'Abidjan", texte:"Le cœur logistique de la Côte d'Ivoire"},
-    {titre:"SITARAIL", texte:"Le rail qui relie Ouaga à Abidjan"},
-    {titre:"L'aérien FHB", texte:"Vite, loin, précieux"},
-    {titre:"La route", texte:"Le dernier kilomètre"},
-    {titre:"Les entrepôts", texte:"Là où tout commence"}
-  ];
-
   // Conseils (bandeau défilant)
   const TICKER_CONSEILS = [
     "Révise 15 min par jour, pas 3 h la veille",
@@ -721,11 +713,11 @@
      ============================================================ */
 
   const TRAILERS = [
-    {titre:"Le Port d'Abidjan", sub:"Le cœur logistique de la Côte d'Ivoire"},
-    {titre:"SITARAIL", sub:"Le rail qui relie Ouaga à Abidjan"},
-    {titre:"L'aérien FHB", sub:"Vite, loin, précieux"},
-    {titre:"La route", sub:"Le dernier kilomètre"},
-    {titre:"Les entrepôts", sub:"Là où tout commence"}
+    {titre:"Le Port d'Abidjan", texte:"Le cœur logistique de la Côte d'Ivoire"},
+    {titre:"SITARAIL", texte:"Le rail qui relie Ouaga à Abidjan"},
+    {titre:"L'aérien FHB", texte:"Vite, loin, précieux"},
+    {titre:"La route", texte:"Le dernier kilomètre"},
+    {titre:"Les entrepôts", texte:"Là où tout commence"}
   ];
 
   const CONSEILS = [
@@ -749,7 +741,7 @@
     try{ localStorage.setItem(trailerKey(i), url); }catch(e){}
   }
 
-  let trailerQueue = Promise.resolve();
+  let _trailerQueue1 = Promise.resolve();
 
   function renderTrailers(){
     const track = $("#trailersTrack");
@@ -768,7 +760,7 @@
             : `<div class="trailer-loading">🎬</div>`}
           <div class="trailer-overlay">
             <div class="trailer-title">${escapeHtml(t.titre)}</div>
-            <div class="trailer-sub">${escapeHtml(t.sub)}</div>
+            <div class="trailer-sub">${escapeHtml(t.texte || t.sub)}</div>
           </div>
         </div>`;
     }).join("");
@@ -776,7 +768,7 @@
     // Chargement en file d'attente (1 à la fois) des images manquantes
     TRAILERS.forEach((t, i) => {
       if(getTrailerCache(i)) return;
-      trailerQueue = trailerQueue
+      _trailerQueue1 = _trailerQueue1
         .then(() => genererTrailer(i, t.titre))
         .catch(() => {});
     });
@@ -1084,8 +1076,9 @@
     const container = $("#todayContent");
 
     renderDefi();
-    renderTrailers();
-    renderTicker();
+    renderEscales();
+    renderConseil();
+    renderModes();
 
     if(!courses || courses.length === 0){
       container.innerHTML = `
@@ -1681,7 +1674,7 @@
   function encouragement(note){
     if(note < 8) return "Courage, on révise ensemble 💪";
     if(note <= 14) return "Tu progresses, continue comme ça 🌱";
-    return "Bravo Mambo ! 🏆";
+    return "Bravo ! 🏆";
   }
 
   // Cherche le texte d'un cours lié à la matière (si disponible)
@@ -4094,8 +4087,8 @@
     updateHeader();
     setInterval(updateHeader, 1000);
 
-    renderTrailers();
-    renderTicker();
+    renderEscales();
+    renderConseil();
     renderToday();
     renderEvening();
     renderCourses("");
@@ -4204,4 +4197,198 @@
   if(!el) return;
   var h = new Date().getHours();
   el.textContent = (h >= 18 || h < 5) ? "Bonsoir" : "Bonjour";
+})();
+
+
+  /* ===== ESCALES : carrousel vertical, une par une ===== */
+  let _escaleIdx = 0, _escaleTimer = null, _escaleQueue = Promise.resolve();
+
+  function escaleAfficher(i){
+    const view = $("#escalesView");
+    const dots = $("#escalesDots");
+    if(!view || !TRAILERS.length) return;
+    const t = TRAILERS[i];
+    const total = TRAILERS.length;
+    const cached = getTrailerCache(i);
+    view.innerHTML = `
+      <div class="escale-card">
+        <div class="escale-img" id="escaleImg">
+          ${cached ? `<img src="${escapeHtml(cached)}" alt="${escapeHtml(t.titre)}">`
+                   : `<div class="escale-loading"><div class="escale-spin"></div><span>Image ${i+1}/${total}…</span></div>`}
+        </div>
+        <div class="escale-body">
+          <div class="escale-num">ESCALE ${String(i+1).padStart(2,"0")} / ${String(total).padStart(2,"0")}</div>
+          <div class="escale-title">${escapeHtml(t.titre)}</div>
+          <div class="escale-text">${escapeHtml(t.texte)}</div>
+        </div>
+      </div>`;
+    if(dots){
+      dots.innerHTML = TRAILERS.map((_,k)=>`<button class="escale-dot ${k===i?"active":""}" data-i="${k}" aria-label="Escale ${k+1}"></button>`).join("");
+      dots.querySelectorAll(".escale-dot").forEach(b=>{
+        b.addEventListener("click", ()=>{ _escaleIdx=+b.dataset.i; escaleAfficher(_escaleIdx); escaleTimer(); });
+      });
+    }
+    if(!cached) escaleCharger(i);
+  }
+
+  function escaleTimer(){
+    if(_escaleTimer) clearInterval(_escaleTimer);
+    _escaleTimer = setInterval(()=>{
+      _escaleIdx = (_escaleIdx + 1) % TRAILERS.length;
+      escaleAfficher(_escaleIdx);
+    }, 6500);
+  }
+
+  function escaleCharger(i){
+    const t = TRAILERS[i];
+    _escaleQueue = _escaleQueue.then(async ()=>{
+      if(getTrailerCache(i)) return;
+      try{
+        const res = await fetch("/api/ai/image", {
+          method:"POST", headers:{"Content-Type":"application/json"},
+          credentials:"same-origin",
+          body: JSON.stringify({prompt:"photo réaliste, " + t.titre + ", Côte d'Ivoire, logistique, 16:9"})
+        });
+        const data = await res.json();
+        if(!data || !data.ok || !data.image) return;
+        setTrailerCache(i, data.image);
+        const box = $("#escaleImg");
+        if(box && _escaleIdx === i){
+          box.innerHTML = `<img src="${escapeHtml(data.image)}" alt="${escapeHtml(t.titre)}">`;
+        }
+      }catch(e){}
+    }).catch(()=>{});
+  }
+
+  function renderEscales(){
+    _escaleIdx = 0;
+    escaleAfficher(0);
+    escaleTimer();
+  }
+
+  /* ===== CONSEIL DU MOMENT (un par un) ===== */
+  let _conseilIdx = 0, _conseilTimer = null;
+
+  function renderConseil(){
+    const el = $("#conseilCard");
+    if(!el) return;
+    const items = (typeof TICKER_CONSEILS !== "undefined" && TICKER_CONSEILS.length)
+      ? TICKER_CONSEILS : CONSEILS;
+    if(!items || !items.length) return;
+    function afficher(i){
+      el.innerHTML = `<span class="conseil-ico">💡</span><span class="conseil-txt">${escapeHtml(items[i])}</span>`;
+      el.classList.remove("fade");
+      void el.offsetWidth;
+      el.classList.add("fade");
+    }
+    afficher(0);
+    if(_conseilTimer) clearInterval(_conseilTimer);
+    _conseilTimer = setInterval(()=>{
+      _conseilIdx = (_conseilIdx + 1) % items.length;
+      afficher(_conseilIdx);
+    }, 6000);
+  }
+
+
+  /* ===== LES MODES DE TRANSPORT (images qui s'actualisent) ===== */
+  const MODES = [
+    {id:"routier", titre:"Transport routier", desc:"Le dernier kilomètre, partout en Côte d'Ivoire.",
+     prompts:["photo réaliste, camion semi-remorque sur route ivoirienne, port d'Abidjan","photo réaliste, convoi de camions citernes, autoroute, Côte d'Ivoire"]},
+    {id:"ferroviaire", titre:"Transport ferroviaire", desc:"SITARAIL — le rail qui relie Ouaga à Abidjan.",
+     prompts:["photo réaliste, train de marchandises SITARAIL, rails, gare","photo réaliste, locomotive diesel, wagons, campagne ivoirienne"]},
+    {id:"maritime", titre:"Transport maritime", desc:"Le port autonome d'Abidjan, porte de l'Afrique de l'Ouest.",
+     prompts:["photo réaliste, porte-conteneurs au port d'Abidjan","photo réaliste, grues portuaires, conteneurs, terminal TC1 Abidjan"]},
+    {id:"aerien", titre:"Transport aérien", desc:"L'aéroport FHB — vite, loin, précieux.",
+     prompts:["photo réaliste, avion cargo à l'aéroport FHB Abidjan","photo réaliste, avion de fret, piste, marchandises"]},
+    {id:"entrepots", titre:"Gestion des Opérations Logistiques", desc:"Les grands entrepôts où tout commence.",
+     prompts:["photo réaliste, grand entrepôt logistique, racks, palettes","photo réaliste, entrepôt moderne, chariots élévateurs, conteneurs"]}
+  ];
+
+  let _modesQueue = Promise.resolve();
+  function modeCle(m, k){ return "mode:" + m.id + ":" + k; }
+  function modeCache(m, k){ try{ return localStorage.getItem(modeCle(m, k)); }catch(e){ return null; } }
+
+  async function modeGenerer(m, k){
+    try{
+      const res = await fetch("/api/ai/image", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        credentials:"same-origin",
+        body: JSON.stringify({prompt: m.prompts[k]})
+      });
+      const data = await res.json();
+      if(!data || !data.ok || !data.image) return null;
+      try{ localStorage.setItem(modeCle(m, k), data.image); }catch(e){}
+      return data.image;
+    }catch(e){ return null; }
+  }
+
+  function renderModes(){
+    const zone = $("#modesZone");
+    if(!zone) return;
+    zone.innerHTML = MODES.map(m => `
+      <div class="mode-card" data-mode="${m.id}">
+        <div class="mode-badge">${m.id === "entrepots" ? "GDE" : "MODE"}</div>
+        <div class="mode-img" id="modeImg-${m.id}">
+          ${modeCache(m,0) ? `<img src="${escapeHtml(modeCache(m,0))}" alt="${escapeHtml(m.titre)}">` : `<div class="mode-loading">🎬</div>`}
+        </div>
+        <div class="mode-body">
+          <div class="mode-title">${escapeHtml(m.titre)}</div>
+          <div class="mode-desc">${escapeHtml(m.desc)}</div>
+        </div>
+      </div>`).join("");
+
+    MODES.forEach(m => {
+      _modesQueue = _modesQueue.then(async () => {
+        if(modeCache(m,0)) return;
+        const img = await modeGenerer(m, 0);
+        if(img){
+          const box = $("#modeImg-" + m.id);
+          if(box) box.innerHTML = `<img src="${escapeHtml(img)}" alt="${escapeHtml(m.titre)}">`;
+        }
+      }).catch(()=>{});
+    });
+
+    if(window._modesTimer) clearInterval(window._modesTimer);
+    let idx = 0;
+    window._modesTimer = setInterval(async () => {
+      const m = MODES[idx % MODES.length];
+      idx++;
+      const k = idx % 2;
+      let img = modeCache(m, k) || await modeGenerer(m, k);
+      if(img){
+        const box = $("#modeImg-" + m.id);
+        if(box) box.innerHTML = `<img src="${escapeHtml(img)}" alt="${escapeHtml(m.titre)}">`;
+      }
+    }, 9000);
+  }
+
+/* ===== INTRO CINÉMATIQUE ===== */
+(function(){
+  var intro = document.getElementById("intro");
+  if(!intro) return;
+  function fermer(){
+    intro.classList.add("sortie");
+    try{ localStorage.setItem("introVu","1"); }catch(e){}
+    setTimeout(function(){ intro.style.display = "none"; }, 900);
+  }
+  var skip = document.getElementById("introSkip");
+  if(skip) skip.addEventListener("click", fermer);
+  setTimeout(fermer, 90500);
+  try{
+    if(localStorage.getItem("introVu") === "1"){
+      intro.style.display = "none";
+    }
+  }catch(e){}
+  window.revoirIntro = function(){
+    var parent = intro.parentNode;
+    if(!parent) return;
+    var clone = intro.cloneNode(true);
+    clone.style.display = "grid";
+    clone.classList.remove("sortie");
+    parent.replaceChild(clone, intro);
+    intro = clone;
+    var sk = clone.querySelector("#introSkip");
+    if(sk) sk.addEventListener("click", fermer);
+    setTimeout(fermer, 90500);
+  };
 })();

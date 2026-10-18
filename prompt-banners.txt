@@ -1,0 +1,18 @@
+Ajoute une IMAGE DE BANNIÈRE sur chaque onglet (chargée au clic, mise en cache).
+
+1. Chaque <section class="tab"> a une bannière en haut : <div class="tab-banner">
+   <img> avec une image générée via /api/ai/image, prompt propre à l'onglet :
+   - today : "photo réaliste, port d'Abidjan, grues, conteneurs, lumière dorée, 16:9"
+   - evening : "entrepôt logistique au coucher du soleil, 16:9"
+   - courses : "bibliothèque, livres, transport logistique, 16:9"
+   - etude : "étudiant révisant, cahiers, transport, 16:9"
+   - quiz : "salle de classe, concentration, quiz, 16:9"
+   - games : "jeu, défi, énergie, 16:9"
+   - anglais : "Londres, transport, drapeau anglais, 16:9"
+   - assistant : "intelligence artificielle, coach, 16:9"
+2. Au clic sur un onglet (data-tab), si la bannière est vide :
+   - afficher un dégradé placeholder
+   - fetch /api/ai/image (une seule fois, cache localStorage "banner:"+tab)
+   - remplacer par <img> (object-fit cover, hauteur 150px, border-radius, fade-in).
+3. Garde-fou : file d'attente (1 seule génération à la fois), pas de doublon.
+4. style.css : .tab-banner, .tab-banner img.

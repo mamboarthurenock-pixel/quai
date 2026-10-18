@@ -1,0 +1,56 @@
+Réécris complètement style.css pour un design SPECTACULAIRE, vibrant, "wouah".
+IMPÉRATIF : garde EXACTEMENT les mêmes noms de classes et sélecteurs (le JS et
+le HTML en dépendent). Tu ne fais que changer les propriétés visuelles.
+
+PALETTE PLUS RICHE ET VIBRANTE (remplace les variables :root) :
+--bg:#0a0616 (violet nuit profond)
+--bg-2:#120a24
+--card:rgba(24,16,48,.62)
+--card-solid:#181030
+--accent:#22d3ee (cyan vif)
+--accent-2:#a78bfa (violet)
+--accent-3:#f472b6 (rose)
+--accent-4:#fbbf24 (ambre)
+--text:#f4f6ff
+--muted:#a5b0d0
+--line:rgba(167,139,250,.22)
+--shadow-glow:0 0 40px rgba(34,211,238,.35)
+Ajoute ces variables et utilise-les partout.
+
+FOND SPECTACULAIRE :
+- body : plusieurs radial-gradients colorés (cyan en haut droite, violet en bas
+  gauche, rose au centre) + un dégradé animé lent (40s).
+- Un motif de grille subtil (linear-gradient répété) en overlay très léger.
+- Des particules lumineuses fixes (déjà présentes, renforce-les, 3 couleurs).
+
+CARTES PREMIUM :
+- fond rgba + backdrop-filter: blur(18px) saturate(1.4)
+- bordure 1px rgba(167,139,250,.25) + un liseré supérieur en dégradé
+  (cyan→violet→rose) via ::before.
+- ombre profonde + au survol : translateY(-5px) + glow cyan.
+- coins arrondis 22px.
+
+TYPOGRAPHIE :
+- h1 32-40px, font-weight 800, dégradé de texte (background-clip:text) cyan→violet→rose
+- text-shadow lumineux sur les titres
+- labels en majuscules espacées, couleur muted.
+
+BOUTONS :
+- dégradé cyan→violet, bordure lumineuse, ombre portée colorée, effet de lueur
+  au survol, transition 220ms.
+
+ONGLETS / NAV :
+- verre dépoli, indicateur actif en dégradé avec halo.
+
+LIGNE DU JOUR (métro) :
+- rail en dégradé vertical cyan→violet, station active avec halo pulsant
+  multicouche (cyan + violet), stations passées atténuées.
+
+ANIMATIONS (ajoute si absentes) :
+- @keyframes shiftBg, floatUp, pulseGlow, shimmer, gradientText, fadeInUp, pulseRing
+- apparition en cascade des cartes (animation-delay progressif via nth-child)
+- shimmer sur le titre principal
+- barres de progression animées
+
+RESPECTE prefers-reduced-motion (désactive les animations).
+Ne touche PAS au HTML ni au JS. Uniquement style.css.

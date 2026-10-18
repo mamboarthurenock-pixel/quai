@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: lpcc-app
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && bash setup_piper.sh
+    startCommand: gunicorn server:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120

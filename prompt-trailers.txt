@@ -1,0 +1,21 @@
+Ajoute sous le cinéma (onglet Aujourd'hui) : les 5 escales + un bandeau de conseils.
+
+1. <div class="trailers"><div class="trailers-track"> ... </div></div>
+   5 cartes qui défilent horizontalement (marquee CSS, boucle infinie) :
+   1. "Le Port d'Abidjan" — "Le cœur logistique de la Côte d'Ivoire"
+   2. "SITARAIL" — "Le rail qui relie Ouaga à Abidjan"
+   3. "L'aérien FHB" — "Vite, loin, précieux"
+   4. "La route" — "Le dernier kilomètre"
+   5. "Les entrepôts" — "Là où tout commence"
+   Chaque carte a une image générée via /api/ai/image (cache "trailer:"+i),
+   prompt "photo réaliste, " + titre + ", Côte d'Ivoire, logistique, 16:9",
+   chargée en arrière-plan (file d'attente 1 à la fois), avec overlay titre + texte.
+
+2. <div class="ticker"><div class="ticker-track"> ... </div></div>
+   6 conseils qui défilent en boucle :
+   "Révise 15 min par jour, pas 3 h la veille", "Le BT en TLT se prépare dès maintenant",
+   "Utilise les cartes du jour dans Étude", "Un cours importé = des questions en plus",
+   "Le Coach IA t'explique quand tu bloques", "UNION · DISCIPLINE · MARASSE".
+
+3. style.css : .trailers (overflow hidden), .trailers-track (animation marquee),
+   .trailer-card (260px, image, overlay), .ticker (bandeau + animation).

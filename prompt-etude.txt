@@ -1,0 +1,27 @@
+Ajoute un onglet "Étude" (mode révision) avec génération de fiches "À retenir".
+
+1. index.html : ajoute un bouton de navigation data-tab="etude" (libellé "Étude",
+   icône livre 📖 SVG ou emoji) et une <section class="tab" id="tab-etude"> avec :
+   - titre "Étude — À retenir"
+   - <select id="etudeMatiere"><option value="">— Matière —</option></select>
+   - <select id="etudeCours"><option value="">— Choisis un cours —</option></select>
+   - <div id="etudeContent"></div>
+
+2. app.js : ajoute (sans casser le reste) :
+   - initEtude() : fetch("/api/cours") (credentials same-origin) ; remplit
+     #etudeMatiere avec les matières uniques ; au changement de matière, remplit
+     #etudeCours avec les cours de cette matière (fichier comme valeur, titre
+     nettoyé comme libellé).
+   - au changement de cours : affiche dans #etudeContent le titre + un bouton
+     "✨ Générer la fiche À retenir" (id etudeGen) + un état "…" pendant génération.
+   - clic sur etudeGen : clé cache = "fiche:" + fichier ; si localStorage a la
+     clé → afficher ; sinon fetch("/api/ai/fiche", {texte, titre}) → afficher et
+     localStorage.setItem(clé, JSON.stringify(fiche)).
+   - afficheFiche(fiche) : rendu des points (liste numérotée 1..5), formules
+     (encadrés), sigles (badges), pièges (alertes), mnémo (encadré doré) ;
+     tout échappé (pas d'injection). Plus un bouton "🔊 Écouter la fiche" qui
+     appelle window.lireTexte(points + mnémo).
+   - Appeler initEtude() dans init() (au chargement).
+
+3. style.css : styles .fiche-points, .fiche-formule, .fiche-sigle, .fiche-piege,
+   .fiche-mnemo, bouton .btn-ai (dégradé), cohérents avec le thème violet/cyan/rose.

@@ -1,0 +1,19 @@
+Rends la voix off accessible PARTOUT dans l'app.
+
+1. index.html : juste avant </body>, ajoute :
+   <button id="voixFlottante" class="voix-flottante" title="Écouter cette page">🔊</button>
+
+2. app.js :
+   - Expose les fonctions existantes sur window, à la fin de l'IIFE :
+     window.lireTexte = lireTexte;
+     window.stopVoix = stopVoix;
+   - Ajoute un gestionnaire pour #voixFlottante :
+     * au clic, s'il est en train de lire → stopVoix() et remettre l'icône 🔊 ;
+     * sinon, récupérer le texte visible de la section .tab.active
+       (textContent, nettoyé des espaces multiples), le limiter à 1500 caractères,
+       appeler lireTexte(texte) et mettre l'icône ⏹️ ;
+     * suivre l'état avec une variable enLecture.
+
+3. style.css : ajoute .voix-flottante (bouton rond fixe en bas à droite, au-dessus
+   de la nav, 56px, dégradé cyan→violet, ombre lumineuse, z-index élevé,
+   transition, état .actif avec animation pulse).
