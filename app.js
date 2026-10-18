@@ -435,64 +435,189 @@
      ONGLET COURS
      ============================================================ */
 
+  // État des cours importés
+  let coursState = {
+    loaded: false,
+    loading: false,
+    error: null,
+    items: [],
+    filter: "",
+    open: null // cours actuellement ouvert dans le lecteur
+  };
+
+  function levelClass(niveau){
+    const n = String(niveau || "").toUpperCase();
+    if(n === "3BT") return "lvl-3";
+    if(n === "2BT") return "lvl-2";
+    if(n === "1BT") return "lvl-1";
+    return "lvl-3";
+  }
+
+  function cleanFileName(f){
+    return String(f || "").replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
+  }
+
+  function fmtChars(n){
+    const v = Number(n) || 0;
+    return new Intl.NumberFormat("fr-FR").format(v) + " car.";
+  }
+
+  async function loadCours(){
+    if(coursState.loading) return;
+    coursState.loading = true;
+    coursState.error = null;
+    renderCourses(coursState.filter);
+    try{
+      const res = await fetch("/api/cours", {credentials:"same-origin"});
+      let data = null;
+      try{ data = await res.json(); }catch(e){ data = null; }
+      if(!res.ok || !data || !data.ok){
+        coursState.error = (data && data.error) || ("Erreur serveur (" + res.status + ")");
+        coursState.items = [];
+      } else {
+        coursState.items = Array.isArray(data.cours) ? data.cours : [];
+      }
+    }catch(e){
+      coursState.error = "Impossible de charger les cours.";
+      coursState.items = [];
+    }finally{
+      coursState.loading = false;
+      coursState.loaded = true;
+      renderCourses(coursState.filter);
+    }
+  }
+
   function renderCourses(filter){
-    const q = (filter || "").trim().toLowerCase();
+    coursState.filter = filter || "";
+    const q = coursState.filter.trim().toLowerCase();
     const container = $("#coursesContent");
+    if(!container) return;
+
+    // Si un cours est ouvert, on affiche le lecteur
+    if(coursState.open){
+      renderCoursReader(coursState.open);
+      return;
+    }
+
+    if(coursState.loading && !coursState.loaded){
+      container.innerHTML = `<div class="empty"><div class="big">⏳</div><div>Chargement des cours…</div></div>`;
+      return;
+    }
+
+    if(coursState.error){
+      container.innerHTML = `<div class="empty"><div class="big">⚠️</div><div>${escapeHtml(coursState.error)}</div></div>`;
+      return;
+    }
+
+    if(!coursState.items.length){
+      container.innerHTML = `<div class="empty"><div class="big">📚</div><div>Aucun cours importé — ajoute tes fichiers.</div></div>`;
+      return;
+    }
+
+    // Filtrage
+    const filtered = coursState.items.filter(c => {
+      if(!q) return true;
+      const hay = [
+        c.matiere, c.fichier, c.niveau, c.texte
+      ].map(v => String(v || "").toLowerCase()).join(" ");
+      return hay.includes(q);
+    });
+
+    if(!filtered.length){
+      container.innerHTML = `<div class="empty"><div class="big">🔍</div><div>Aucun résultat pour « ${escapeHtml(coursState.filter)} ».</div></div>`;
+      return;
+    }
+
+    // Groupement par matière
+    const byMatiere = new Map();
+    filtered.forEach(c => {
+      const m = c.matiere || "Sans matière";
+      if(!byMatiere.has(m)) byMatiere.set(m, []);
+      byMatiere.get(m).push(c);
+    });
+
+    const matieres = Array.from(byMatiere.keys()).sort((a,b) => a.localeCompare(b, "fr"));
+
     let html = "";
-
-    const levels = [
-      {key:"3BT", cls:"lvl-3"},
-      {key:"2BT", cls:"lvl-2"},
-      {key:"1BT", cls:"lvl-1"}
-    ];
-
-    levels.forEach(lv => {
-      const items = SUBJECTS[lv.key].filter(([name]) =>
-        !q || name.toLowerCase().includes(q)
-      );
-      if(items.length === 0) return;
+    matieres.forEach(m => {
+      const items = byMatiere.get(m).slice().sort((a,b) => {
+        const na = String(a.niveau || "").localeCompare(String(b.niveau || ""), "fr");
+        if(na !== 0) return na;
+        return String(a.fichier || "").localeCompare(String(b.fichier || ""), "fr");
+      });
       html += `
-        <div class="level-group">
-          <div class="level-head">
-            <span class="level-pill ${lv.cls}">${lv.key}</span>
-            <span class="count">${items.length} matière${items.length>1?"s":""}</span>
+        <div class="cours-group">
+          <div class="cours-group-head">
+            <span class="cours-group-ico">${iconFor(m)}</span>
+            <span class="cours-group-title">${escapeHtml(m)}</span>
+            <span class="cours-group-count">${items.length}</span>
           </div>
-          <div class="subject-list">
-            ${items.map(([name]) => `
-              <div class="subject-item">
-                <span class="ico">${iconFor(name)}</span>
-                <span class="name">${escapeHtml(name)}</span>
-              </div>`).join("")}
+          <div class="cours-list">
+            ${items.map((c, i) => {
+              const idx = coursState.items.indexOf(c);
+              return `
+                <button class="cours-card" data-idx="${idx}">
+                  <div class="cours-card-top">
+                    <span class="cours-file">${escapeHtml(cleanFileName(c.fichier))}</span>
+                    <span class="level-pill ${levelClass(c.niveau)}">${escapeHtml(c.niveau || "—")}</span>
+                  </div>
+                  <div class="cours-card-meta">
+                    <span class="cours-matiere">${escapeHtml(c.matiere || "—")}</span>
+                    <span class="cours-size">${fmtChars(c.caracteres)}</span>
+                  </div>
+                </button>`;
+            }).join("")}
           </div>
         </div>`;
     });
 
-    // Sigles
-    const sigleEntries = Object.entries(SIGLES).filter(([code,def]) =>
-      !q || code.toLowerCase().includes(q) || def.toLowerCase().includes(q)
-    );
-    if(sigleEntries.length > 0){
-      html += `
-        <div class="level-group">
-          <div class="level-head">
-            <span class="level-pill lvl-3">SIGLES TLT</span>
-            <span class="count">${sigleEntries.length} entrée${sigleEntries.length>1?"s":""}</span>
-          </div>
-          <div class="sigles-grid">
-            ${sigleEntries.map(([code,def]) => `
-              <div class="sigle">
-                <div class="code">${escapeHtml(code)}</div>
-                <div class="def">${escapeHtml(def)}</div>
-              </div>`).join("")}
-          </div>
-        </div>`;
-    }
-
-    if(!html){
-      html = `<div class="empty"><div class="big">🔍</div><div>Aucun résultat pour « ${escapeHtml(filter)} ».</div></div>`;
-    }
-
     container.innerHTML = html;
+
+    $$(".cours-card").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const idx = parseInt(btn.dataset.idx, 10);
+        const c = coursState.items[idx];
+        if(c){
+          coursState.open = c;
+          renderCourses(coursState.filter);
+          window.scrollTo({top:0, behavior:"smooth"});
+        }
+      });
+    });
+  }
+
+  function renderCoursReader(c){
+    const container = $("#coursesContent");
+    if(!container) return;
+    const texte = String(c.texte || "");
+    container.innerHTML = `
+      <div class="cours-reader">
+        <div class="cours-reader-head">
+          <button class="btn ghost cours-back" id="coursBackBtn">← Retour</button>
+          <button class="btn cours-listen" id="coursListenBtn">🔊 Écouter</button>
+        </div>
+        <div class="cours-reader-title">
+          <span class="level-pill ${levelClass(c.niveau)}">${escapeHtml(c.niveau || "—")}</span>
+          <h2>${escapeHtml(cleanFileName(c.fichier))}</h2>
+          <div class="cours-reader-meta">${escapeHtml(c.matiere || "—")} · ${fmtChars(c.caracteres)}</div>
+        </div>
+        <pre class="cours-reader-text">${escapeHtml(texte)}</pre>
+      </div>
+    `;
+
+    const back = $("#coursBackBtn");
+    if(back) back.addEventListener("click", () => {
+      coursState.open = null;
+      renderCourses(coursState.filter);
+      window.scrollTo({top:0, behavior:"smooth"});
+    });
+
+    const listen = $("#coursListenBtn");
+    if(listen) listen.addEventListener("click", () => {
+      if(typeof window.lireTexte === "function"){
+        window.lireTexte(texte);
+      }
+    });
   }
 
   /* ============================================================
@@ -1456,6 +1581,7 @@
     renderToday();
     renderEvening();
     renderCourses("");
+    loadCours();
     renderQuizSelector();
     renderGamesMenu();
     initAssistant();
