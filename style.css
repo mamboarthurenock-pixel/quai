@@ -1489,11 +1489,3 @@ body.modal-open{overflow:hidden}
   text-align:center;
 }
 .fiche-image-msg.err{color:var(--rose)}
-```
-
-app.js
-```javascript
-<<<<<<< SEARCH
-  function setFicheCache(fichier, fiche){
-    try{ localStorage.setItem(etudeCacheKey(fichier), JSON.stringify(fiche)); }catch(e){}
-  }
