@@ -1079,6 +1079,7 @@
     renderEscales();
     renderConseil();
     renderModes();
+    try{ renderPlanDuJour(); }catch(e){}
 
     if(!courses || courses.length === 0){
       container.innerHTML = `
@@ -4486,5 +4487,43 @@
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", function(){
     navigator.serviceWorker.register("/sw.js").catch(function(){});
+  });
+}
+
+
+/* ===== PLAN DU JOUR (l'app propose chaque jour) ===== */
+function renderPlanDuJour(){
+  var zone = document.getElementById("planZone");
+  if(!zone) return;
+  function esc(v){ return String(v).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+  var today = new Date().getDay();
+  var sch = window.SCHEDULE || null;
+  var cours = (sch && sch[today]) ? sch[today] : [];
+  var matieres = [];
+  cours.forEach(function(c){ if(c && c.subject && matieres.indexOf(c.subject) < 0) matieres.push(c.subject); });
+  var errors = [];
+  try{ errors = JSON.parse(localStorage.getItem("errors") || "[]") || []; }catch(e){ errors = []; }
+  var nbErr = errors.length;
+
+  var taches = [];
+  if(matieres[0]) taches.push({ico:"📖", txt:"Relire la fiche : " + matieres[0], tab:"etude", sub:"Au programme aujourd'hui"});
+  if(matieres[1]) taches.push({ico:"🎯", txt:"Quiz : " + matieres[1], tab:"quiz", sub:"5 questions"});
+  if(nbErr > 0) taches.push({ico:"🔁", txt:"Revoir mes " + nbErr + " erreur(s)", tab:"etude", sub:"Carnet d'erreurs"});
+  else taches.push({ico:"🃏", txt:"Cartes du jour", tab:"etude", sub:"Répétition espacée"});
+  taches.push({ico:"🎮", txt:"Un jeu de 3 min", tab:"games", sub:"Pour le plaisir"});
+
+  zone.innerHTML = '<p class="section-title">Ton plan du jour</p><div class="plan-list">' +
+    taches.map(function(t){
+      return '<button class="plan-item" data-tab="' + t.tab + '">' +
+        '<span class="plan-ico">' + t.ico + '</span>' +
+        '<span class="plan-txt"><b>' + esc(t.txt) + '</b><small>' + esc(t.sub) + '</small></span>' +
+        '<span class="plan-go">→</span></button>';
+    }).join("") + '</div>';
+
+  zone.querySelectorAll(".plan-item").forEach(function(b){
+    b.addEventListener("click", function(){
+      var btn = document.querySelector('.nav-btn[data-tab="' + b.dataset.tab + '"]');
+      if(btn) btn.click();
+    });
   });
 }
