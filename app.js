@@ -970,7 +970,7 @@
           : "Pas encore, mais tu progresses. La bonne réponse : " + escapeHtml(bonne));
 
     fb.innerHTML = `
-      <div class="quiz-fb-title ${correct ? "ok" : "ko"}">${titre}</div>
+      <div class="${correct ? "quiz-fb-title ok" : "correction-douce"}">${titre}</div>
       <div class="quiz-fb-exp">${escapeHtml(q.explication)}</div>
       ${correct ? "" : `
         <button class="btn explique-btn" id="quizExplainBtn">💡 Explique-moi</button>
@@ -1018,13 +1018,14 @@
     const best = getBest(st.matiere);
 
     const msg = encouragement(note);
+    const encClass = note > 14 ? "enc-bravo" : (note >= 8 ? "enc-progres" : "enc-courage");
 
     $("#quizZone").innerHTML = `
       <div class="quiz-result">
         <div class="quiz-result-mat">${escapeHtml(st.matiere)}</div>
         <div class="quiz-result-note">${note}<span>/20</span></div>
         <div class="quiz-result-detail">${st.score} bonne${st.score>1?"s":""} réponse${st.score>1?"s":""} sur ${total}</div>
-        <div class="encouragement">${escapeHtml(msg)}</div>
+        <div class="encouragement ${encClass}">${escapeHtml(msg)}</div>
         <div class="quiz-result-best">Meilleur score : <b>${best}/20</b></div>
         <button class="btn" id="quizRestartBtn">Recommencer</button>
         <button class="btn ghost" id="quizBackBtn">Changer de matière</button>

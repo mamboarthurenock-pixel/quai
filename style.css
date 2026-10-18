@@ -1651,12 +1651,39 @@
   color:var(--green);
   box-shadow:0 0 18px -8px rgba(52,211,153,.6);
 }
+.explique-niveau.active{
+  color:#0a0616;
+  background:var(--grad-main);background-size:200% auto;
+  border-color:transparent;
+  box-shadow:0 0 18px -4px rgba(34,211,238,.7);
+}
 
 .encouragement{
   margin:14px 0;
   font-size:15px;font-weight:700;letter-spacing:.2px;
   color:var(--green);
   text-shadow:0 0 18px rgba(52,211,153,.5);
+  padding:12px 16px;border-radius:14px;text-align:center;
+}
+.encouragement.enc-bravo{
+  color:var(--green);
+  background:rgba(52,211,153,.12);
+  border:1px solid rgba(52,211,153,.4);
+  box-shadow:0 0 24px -10px rgba(52,211,153,.6);
+}
+.encouragement.enc-progres{
+  color:var(--accent);
+  background:rgba(34,211,238,.1);
+  border:1px solid rgba(34,211,238,.35);
+  text-shadow:0 0 18px rgba(34,211,238,.5);
+  box-shadow:0 0 24px -10px rgba(34,211,238,.6);
+}
+.encouragement.enc-courage{
+  color:var(--amber);
+  background:rgba(251,191,36,.1);
+  border:1px solid rgba(251,191,36,.35);
+  text-shadow:0 0 18px rgba(251,191,36,.5);
+  box-shadow:0 0 24px -10px rgba(251,191,36,.6);
 }
 
 /* ---------- Bouton déconnexion ---------- */
