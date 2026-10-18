@@ -53,6 +53,7 @@ app.config.update(
 )
 
 
+
 # --------------------------------------------------------------------------
 # Base de données
 # --------------------------------------------------------------------------
@@ -75,6 +76,10 @@ def init_db():
     """)
     conn.commit()
     conn.close()
+
+
+# Création de la table au démarrage (gunicorn inclus)
+init_db()
 
 
 # --------------------------------------------------------------------------
@@ -139,7 +144,7 @@ LOGIN_HTML = r"""<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LPCC Companion — Connexion</title>
+<title>Quai — Connexion</title>
 <style>
   :root{
     --bg:#0a0616;--card:rgba(24,16,48,.72);--cyan:#22d3ee;--violet:#a78bfa;
@@ -185,7 +190,7 @@ LOGIN_HTML = r"""<!DOCTYPE html>
 <div class="box">
   <div class="logo">LP</div>
   <h1 id="titre">Connexion</h1>
-  <p class="sub">LPCC Companion — 3 BT TLT 1</p>
+  <p class="sub">Quai — 3 BT TLT 1</p>
 
   <form id="form">
     <label for="email">Adresse email</label>
