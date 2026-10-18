@@ -44,7 +44,7 @@ def charger_secret():
 
 
 app = Flask(__name__, static_folder=None)
-app.secret_key = charger_secret()
+# app.secret_key défini plus bas (persisté en base)
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
@@ -183,8 +183,25 @@ def media_get(cle):
         pass
     return None
 
+def _secret_key():
+    # 1) variable d'environnement
+    v = _lire_env("SESSION_SECRET")
+    if v:
+        return v
+    # 2) base de données (persistant)
+    m = media_get("session:secret")
+    if m:
+        return m[1].decode("utf-8", "replace")
+    # 3) générer + stocker
+    import secrets as _secrets
+    v = _secrets.token_hex(32)
+    media_put("session:secret", "text/plain", v.encode())
+    return v
+
+
 # Création de la table au démarrage (gunicorn inclus)
 init_db()
+app.secret_key = _secret_key()
 
 
 # --------------------------------------------------------------------------
