@@ -397,6 +397,79 @@ def api_courses_db():
     return jsonify(ok=True, total=len(rows), cours=[dict(r) for r in rows])
 
 
+PROMPT_CLASSER = (
+    "Tu classes un cours de la filière TLT (Transport Logistique Transit). "
+    "Réponds UNIQUEMENT en JSON valide : {\"matiere\": \"...\", \"niveau\": \"1BT\" ou \"2BT\" ou \"3BT\"}. "
+    "Matières possibles : GDOD, GOL, TEF, TAM, TFMV, AMTT, GDE, CME, DROIT, ANGLAIS, MATHS, "
+    "ECONOMIE, INFORMATIQUE, ENTREPRENEURIAT, CMC, EPS, EDHC, AUTRE. "
+    "Si le nom contient 1BT/1 BT -> 1BT ; si 2BT -> 2BT ; sinon 3BT. "
+    "COURS :\n"
+)
+
+
+def agent_classer(nom, texte):
+    cle = _env("DEEPSEEK_API_KEY")
+    if not cle:
+        return "AUTRE", "3BT"
+    try:
+        r = _post_json(
+            "https://api.deepseek.com/chat/completions",
+            {"model": "deepseek-chat",
+             "messages": [
+                 {"role": "system", "content": "Tu réponds toujours en JSON strict."},
+                 {"role": "user", "content": PROMPT_CLASSER + nom + "\n" + texte[:3000]},
+             ],
+             "max_tokens": 80, "temperature": 0},
+            {"Authorization": "Bearer " + cle}, timeout=60)
+        obj = _extraire_json(r["choices"][0]["message"]["content"]) or {}
+        return (obj.get("matiere") or "AUTRE").upper(), (obj.get("niveau") or "3BT").upper()
+    except Exception:
+        return "AUTRE", "3BT"
+
+
+@app.route("/api/courses/upload", methods=["POST"])
+@login_required
+def api_courses_upload():
+    """Reçoit {fichier, texte} — classe et ajoute à la base. Anti-doublon par fichier."""
+    data = request.get_json(silent=True) or {}
+    fichier = (data.get("fichier") or "").strip()[:300]
+    texte = (data.get("texte") or "").strip()
+    if not fichier or len(texte) < 80:
+        return jsonify(ok=False, error="Fichier ou texte manquant/trop court."), 400
+    matiere, niveau = agent_classer(fichier, texte)
+    conn = db()
+    try:
+        row = conn.execute("SELECT id FROM courses WHERE fichier = ?", (fichier,)).fetchone()
+        if row:
+            conn.execute("UPDATE courses SET texte = ?, matiere = ?, niveau = ?, statut = 'brut' WHERE id = ?",
+                         (texte[:50000], matiere, niveau, row["id"]))
+            cid = row["id"]
+            action = "maj"
+        else:
+            conn.execute("INSERT INTO courses (fichier, dossier, niveau, matiere, texte) VALUES (?, ?, ?, ?, ?)",
+                         (fichier, "Agent local", niveau, matiere, texte[:50000]))
+            row2 = conn.execute("SELECT id FROM courses WHERE fichier = ?", (fichier,)).fetchone()
+            cid = row2["id"]
+            action = "ajout"
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify(ok=True, action=action, id=cid, matiere=matiere, niveau=niveau)
+
+
+@app.route("/api/courses/manque", methods=["GET"])
+@login_required
+def api_courses_manque():
+    """Liste les fichiers déjà connus (pour que l'agent local évite les doublons)."""
+    conn = db()
+    try:
+        rows = conn.execute("SELECT fichier FROM courses").fetchall()
+    finally:
+        conn.close()
+    return jsonify(ok=True, fichiers=[r["fichier"] for r in rows])
+
+
+
 
 
 @app.after_request
