@@ -1488,6 +1488,45 @@
   } else {
     init();
   }
+
+  // Exposer la voix off pour le bouton flottant global
+  window.lireTexte = lireTexte;
+  window.stopVoix = stopVoix;
+})();
+
+/* ---------- Voix off flottante (globale) ---------- */
+(function(){
+  var btn = document.getElementById("voixFlottante");
+  if(!btn) return;
+
+  var enLecture = false;
+
+  function setEtat(actif){
+    enLecture = actif;
+    btn.textContent = actif ? "⏹️" : "🔊";
+    btn.classList.toggle("actif", actif);
+    btn.title = actif ? "Arrêter la lecture" : "Écouter cette page";
+  }
+
+  btn.addEventListener("click", function(){
+    if(enLecture){
+      if(typeof window.stopVoix === "function") window.stopVoix();
+      setEtat(false);
+      return;
+    }
+
+    var tab = document.querySelector(".tab.active");
+    if(!tab) return;
+
+    var texte = (tab.textContent || "").replace(/\s+/g, " ").trim();
+    if(!texte) return;
+    if(texte.length > 1500) texte = texte.slice(0, 1500);
+
+    if(typeof window.lireTexte === "function"){
+      window.lireTexte(texte);
+      setEtat(true);
+    }
+  });
 })();
 
 /* ---------- Déconnexion ---------- */

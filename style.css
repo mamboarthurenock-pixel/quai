@@ -1035,6 +1035,40 @@
   .chat-msg{max-width:75%}
 }
 
+/* ---------- Voix off flottante ---------- */
+.voix-flottante{
+  position:fixed;
+  right:18px;
+  bottom:calc(88px + env(safe-area-inset-bottom));
+  z-index:70;
+  width:56px;height:56px;
+  border-radius:50%;
+  display:grid;place-items:center;
+  font-size:22px;line-height:1;
+  cursor:pointer;
+  color:#0a0616;
+  background:linear-gradient(135deg,#22d3ee,#a78bfa);
+  border:1px solid rgba(34,211,238,.5);
+  box-shadow:0 12px 34px -10px rgba(34,211,238,.8),0 0 28px -6px rgba(167,139,250,.7);
+  transition:transform .22s ease,box-shadow .22s ease,background-position .6s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+.voix-flottante:hover{
+  transform:translateY(-2px) scale(1.04);
+  box-shadow:0 16px 44px -8px rgba(34,211,238,.95),0 0 36px rgba(167,139,250,.8);
+}
+.voix-flottante:active{transform:scale(.96)}
+.voix-flottante.actif{
+  animation:pulseGlow 1.8s ease-in-out infinite;
+}
+
+@media(min-width:900px){
+  .voix-flottante{
+    bottom:24px;
+    right:24px;
+  }
+}
+
 /* ---------- Bouton déconnexion ---------- */
 .logout-btn{
   margin-left:auto;flex:none;
