@@ -733,6 +733,508 @@
   }
 
   /* ============================================================
+     JEUX
+     ============================================================ */
+
+  // Banque de questions pour la roue (matières + questions)
+  const WHEEL_QUESTIONS = {
+    "GDOD": [
+      {q:"Quels sont les 3 éléments déclaratifs en douane ?",
+       options:["Espèce, Origine, Valeur","Poids, Volume, Prix","FOB, CAF, CIF","DD, TVA, PCS"], bonne:0,
+       explication:"Les 3 éléments déclaratifs sont l'espèce tarifaire, l'origine et la valeur en douane."},
+      {q:"Valeur en douane =",
+       options:["FOB seul","CIF = FOB + fret + assurance","Prix de détail","La TVA"], bonne:1,
+       explication:"La valeur en douane est la valeur CIF : FOB + fret + assurance."}
+    ],
+    "TRF": [
+      {q:"Quelle est la voie utilisée par SITARAIL ?",
+       options:["Voie large","Voie métrique","Voie normale","Voie étroite"], bonne:1,
+       explication:"SITARAIL exploite une voie métrique (1,00 m) en Côte d'Ivoire."},
+      {q:"Combien de feuillets compte la liasse DEX ?",
+       options:["3","5","7","9"], bonne:2,
+       explication:"La liasse DEX (Déclaration d'Exportation) comporte 7 feuillets."}
+    ],
+    "TAM": [
+      {q:"Que signifie EC 21 ?",
+       options:["Élaborer un plan de transport aérien","Évaluer le coût du fret","Envoyer un colis","Établir un contrat"], bonne:0,
+       explication:"EC 21 correspond à « Élaborer un plan de transport aérien »."},
+      {q:"Quel document accompagne la marchandise en transport aérien ?",
+       options:["Connaissement (B/L)","Lettre de transport aérien (LTA / AWB)","Lettre de voiture CMR","DAU"], bonne:1,
+       explication:"En aérien, le document de transport est la LTA (Air Waybill)."}
+    ],
+    "DROIT": [
+      {q:"Quelle est la norme suprême dans la hiérarchie des normes ?",
+       options:["La loi","Le décret","La Constitution","L'arrêté"], bonne:2,
+       explication:"La Constitution est au sommet de la hiérarchie des normes."},
+      {q:"Un contrat est valable s'il réunit :",
+       options:["Consentement, capacité, objet, cause","Signature et timbre","Prix et délai","Témoins et notaire"], bonne:0,
+       explication:"Les conditions de validité : consentement, capacité, objet certain et cause licite."}
+    ],
+    "TEF": [
+      {q:"Le transport ferroviaire est surtout adapté aux :",
+       options:["Petits colis urgents","Marchandises lourdes et volumineuses","Voyageurs uniquement","Produits périssables uniquement"], bonne:1,
+       explication:"Le ferroviaire est économique pour les charges lourdes sur longues distances."},
+      {q:"La lettre de voiture ferroviaire s'appelle :",
+       options:["CIM","CMR","B/L","AWB"], bonne:0,
+       explication:"La CIM est la lettre de voiture du transport ferroviaire international."}
+    ],
+    "ANG": [
+      {q:"« Freight forwarder » signifie :",
+       options:["Transporteur maritime","Transitaire","Douanier","Capitaine"], bonne:1,
+       explication:"Le freight forwarder est le transitaire qui organise le transport."},
+      {q:"« Customs clearance » veut dire :",
+       options:["Dédouanement","Chargement","Assurance","Livraison"], bonne:0,
+       explication:"Customs clearance = opération de dédouanement."}
+    ],
+    "MATH": [
+      {q:"Un article coûte 50 000 FCFA, TVA 18 %. Prix TTC ?",
+       options:["59 000 FCFA","58 000 FCFA","60 000 FCFA","55 000 FCFA"], bonne:0,
+       explication:"50 000 × 1,18 = 59 000 FCFA."},
+      {q:"15 % de 2 000 =",
+       options:["200","300","150","250"], bonne:1,
+       explication:"2 000 × 0,15 = 300."}
+    ],
+    "ECO ENT": [
+      {q:"Le chiffre d'affaires est :",
+       options:["Le bénéfice net","Le total des ventes","Les charges","Le capital"], bonne:1,
+       explication:"Le chiffre d'affaires représente le total des ventes réalisées."},
+      {q:"Une SARL est une société :",
+       options:["À responsabilité illimitée","À responsabilité limitée aux apports","Unipersonnelle obligatoire","Sans capital"], bonne:1,
+       explication:"Dans une SARL, la responsabilité est limitée aux apports des associés."}
+    ]
+  };
+
+  const WHEEL_MATIERES = Object.keys(WHEEL_QUESTIONS);
+
+  // Couleurs de la roue (cohérentes avec le design)
+  const WHEEL_COLORS = [
+    "#22d3ee","#a78bfa","#f472b6","#fbbf24",
+    "#34d399","#60a5fa","#f87171","#c084fc"
+  ];
+
+  // Sigles pour le pendu
+  const PENDU_SIGLES = ["GDOD","TEC","DAU","RSTA","TVA","PCS","PCC","PUA","CIF","FOB","SYDAM","GUCE","PAA","SITARAIL","GESTOCI","DEX","FHB","CMR"];
+
+  const GAMES_KEY = "lpcc_games_v1";
+
+  function loadGames(){
+    try{
+      const raw = localStorage.getItem(GAMES_KEY);
+      if(!raw) return {wheelScore:0, penduScore:0, courseBest:0};
+      return Object.assign({wheelScore:0, penduScore:0, courseBest:0}, JSON.parse(raw));
+    }catch(e){
+      return {wheelScore:0, penduScore:0, courseBest:0};
+    }
+  }
+
+  function saveGames(g){
+    try{ localStorage.setItem(GAMES_KEY, JSON.stringify(g)); }catch(e){}
+  }
+
+  let gamesStore = loadGames();
+
+  // État des jeux
+  let wheelState = null;
+  let penduState = null;
+  let courseState = null;
+
+  /* ---------- Menu des jeux ---------- */
+
+  function renderGamesMenu(){
+    const zone = $("#gamesContent");
+    zone.innerHTML = `
+      <div class="games-menu">
+        <button class="game-card" data-game="wheel">
+          <div class="game-ico">🎡</div>
+          <div class="game-info">
+            <div class="game-name">La Roue des matières</div>
+            <div class="game-desc">Tourne la roue, réponds à la question.</div>
+            <div class="game-best">Points : <b>${gamesStore.wheelScore}</b></div>
+          </div>
+        </button>
+        <button class="game-card" data-game="pendu">
+          <div class="game-ico">🔤</div>
+          <div class="game-info">
+            <div class="game-name">Le Pendu des sigles</div>
+            <div class="game-desc">Devine le sigle TLT en 7 erreurs max.</div>
+            <div class="game-best">Points : <b>${gamesStore.penduScore}</b></div>
+          </div>
+        </button>
+        <button class="game-card" data-game="course">
+          <div class="game-ico">⏱️</div>
+          <div class="game-info">
+            <div class="game-name">Course contre la montre</div>
+            <div class="game-desc">60 secondes, un max de bonnes réponses.</div>
+            <div class="game-best">Record : <b>${gamesStore.courseBest}</b></div>
+          </div>
+        </button>
+      </div>
+      <button class="btn ghost" id="gamesBackBtn" style="margin-top:16px">← Retour au menu</button>
+    `;
+    $$(".game-card").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const g = btn.dataset.game;
+        if(g === "wheel") startWheel();
+        else if(g === "pendu") startPendu();
+        else if(g === "course") startCourse();
+      });
+    });
+    const back = $("#gamesBackBtn");
+    if(back) back.addEventListener("click", renderGamesMenu);
+  }
+
+  /* ---------- JEU 1 : LA ROUE ---------- */
+
+  function startWheel(){
+    wheelState = {rotation:0, spinning:false, current:null, answered:false, score:gamesStore.wheelScore};
+    renderWheel();
+  }
+
+  function renderWheel(){
+    const zone = $("#gamesContent");
+    const n = WHEEL_MATIERES.length;
+    const seg = 360 / n;
+    const stops = WHEEL_MATIERES.map((m,i) => {
+      const c = WHEEL_COLORS[i % WHEEL_COLORS.length];
+      return `${c} ${i*seg}deg ${(i+1)*seg}deg`;
+    }).join(",");
+
+    const labels = WHEEL_MATIERES.map((m,i) => {
+      const angle = i*seg + seg/2;
+      return `<span class="wheel-label" style="transform:rotate(${angle}deg) translateY(-38%)">${escapeHtml(m)}</span>`;
+    }).join("");
+
+    zone.innerHTML = `
+      <div class="game-head">
+        <span class="game-title">🎡 La Roue des matières</span>
+        <span class="game-score">Points : <b>${wheelState.score}</b></span>
+      </div>
+      <div class="wheel-wrap">
+        <div class="wheel-pointer"></div>
+        <div class="wheel" id="wheelEl" style="background:conic-gradient(${stops});transform:rotate(${wheelState.rotation}deg)">
+          ${labels}
+        </div>
+      </div>
+      <button class="btn" id="wheelSpinBtn" ${wheelState.spinning ? "disabled" : ""}>Tourner</button>
+      <div id="wheelQuestion"></div>
+      <button class="btn ghost" id="gamesBackBtn" style="margin-top:16px">← Retour au menu</button>
+    `;
+
+    $("#wheelSpinBtn").addEventListener("click", spinWheel);
+    $("#gamesBackBtn").addEventListener("click", renderGamesMenu);
+
+    if(wheelState.current && wheelState.answered){
+      renderWheelQuestion();
+    }
+  }
+
+  function spinWheel(){
+    if(wheelState.spinning) return;
+    wheelState.spinning = true;
+    wheelState.answered = false;
+    wheelState.current = null;
+    $("#wheelQuestion").innerHTML = "";
+    $("#wheelSpinBtn").disabled = true;
+
+    const n = WHEEL_MATIERES.length;
+    const seg = 360 / n;
+    const idx = Math.floor(Math.random() * n);
+    // Le pointeur est en haut (0deg). On veut que le centre du segment idx arrive en haut.
+    const targetAngle = 360 * 5 + (360 - (idx * seg + seg/2));
+    wheelState.rotation = targetAngle;
+
+    const wheel = $("#wheelEl");
+    wheel.style.transition = "transform 3s cubic-bezier(.17,.67,.2,1)";
+    wheel.style.transform = `rotate(${targetAngle}deg)`;
+
+    setTimeout(() => {
+      wheelState.spinning = false;
+      wheelState.current = WHEEL_MATIERES[idx];
+      renderWheelQuestion();
+    }, 3100);
+  }
+
+  function renderWheelQuestion(){
+    const matiere = wheelState.current;
+    const pool = WHEEL_QUESTIONS[matiere];
+    const q = pool[Math.floor(Math.random() * pool.length)];
+    wheelState.question = q;
+
+    const zone = $("#wheelQuestion");
+    zone.innerHTML = `
+      <div class="quiz-card" style="margin-top:16px">
+        <div class="quiz-qnum">Matière : ${escapeHtml(matiere)}</div>
+        <div class="quiz-question">${escapeHtml(q.q)}</div>
+        <div class="quiz-options">
+          ${q.options.map((opt,i) => `<button class="quiz-opt" data-idx="${i}">${escapeHtml(opt)}</button>`).join("")}
+        </div>
+        <div class="quiz-feedback" id="wheelFeedback"></div>
+      </div>
+    `;
+    $$("#wheelQuestion .quiz-opt").forEach(btn => {
+      btn.addEventListener("click", () => answerWheel(parseInt(btn.dataset.idx,10)));
+    });
+  }
+
+  function answerWheel(idx){
+    if(wheelState.answered) return;
+    wheelState.answered = true;
+    const q = wheelState.question;
+    const correct = idx === q.bonne;
+    if(correct){
+      wheelState.score += 10;
+      gamesStore.wheelScore = wheelState.score;
+      saveGames(gamesStore);
+    }
+
+    $$("#wheelQuestion .quiz-opt").forEach(btn => {
+      const i = parseInt(btn.dataset.idx,10);
+      btn.disabled = true;
+      if(i === q.bonne) btn.classList.add("good");
+      else if(i === idx) btn.classList.add("bad");
+    });
+
+    const fb = $("#wheelFeedback");
+    fb.innerHTML = `
+      <div class="quiz-fb-title ${correct ? "ok" : "ko"}">${correct ? "✅ +10 points !" : "❌ Mauvaise réponse"}</div>
+      <div class="quiz-fb-exp">${escapeHtml(q.explication)}</div>
+      <button class="btn quiz-next" id="wheelReplayBtn">Rejouer</button>
+    `;
+    fb.classList.add("show");
+    $("#wheelReplayBtn").addEventListener("click", () => {
+      wheelState.answered = false;
+      wheelState.current = null;
+      renderWheel();
+    });
+    // Mettre à jour le score affiché
+    const scoreEl = document.querySelector(".game-score b");
+    if(scoreEl) scoreEl.textContent = wheelState.score;
+  }
+
+  /* ---------- JEU 2 : LE PENDU ---------- */
+
+  function startPendu(){
+    const mot = PENDU_SIGLES[Math.floor(Math.random() * PENDU_SIGLES.length)];
+    penduState = {
+      mot,
+      found: new Set(),
+      errors: 0,
+      maxErrors: 7,
+      over: false,
+      score: gamesStore.penduScore
+    };
+    renderPendu();
+  }
+
+  function renderPendu(){
+    const st = penduState;
+    const zone = $("#gamesContent");
+    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+    const wordHtml = st.mot.split("").map(ch => {
+      const shown = st.found.has(ch);
+      return `<span class="pendu-letter ${shown ? "shown" : ""}">${shown ? ch : "&nbsp;"}</span>`;
+    }).join("");
+
+    zone.innerHTML = `
+      <div class="game-head">
+        <span class="game-title">🔤 Le Pendu des sigles</span>
+        <span class="game-score">Points : <b>${st.score}</b></span>
+      </div>
+      <div class="pendu-wrap">
+        <div class="pendu-drawing">${penduSVG(st.errors)}</div>
+        <div class="pendu-errors">Erreurs : <b>${st.errors}</b> / ${st.maxErrors}</div>
+      </div>
+      <div class="pendu-word">${wordHtml}</div>
+      <div class="pendu-hint">Indice : ${escapeHtml(SIGLES[st.mot] || "Sigle TLT")}</div>
+      <div class="pendu-keyboard">
+        ${letters.map(l => {
+          const used = st.found.has(l) || st.wrongLetters?.has(l);
+          return `<button class="pendu-key ${used ? "used" : ""}" data-letter="${l}" ${used || st.over ? "disabled" : ""}>${l}</button>`;
+        }).join("")}
+      </div>
+      <div id="penduFeedback"></div>
+      <button class="btn ghost" id="gamesBackBtn" style="margin-top:16px">← Retour au menu</button>
+    `;
+
+    if(!st.wrongLetters) st.wrongLetters = new Set();
+
+    $$(".pendu-key").forEach(btn => {
+      btn.addEventListener("click", () => guessPendu(btn.dataset.letter));
+    });
+    $("#gamesBackBtn").addEventListener("click", renderGamesMenu);
+  }
+
+  function penduSVG(errors){
+    // 7 étapes : potence, tête, corps, bras G, bras D, jambe G, jambe D
+    const parts = [
+      `<line x1="20" y1="180" x2="120" y2="180" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>`,
+      `<line x1="50" y1="180" x2="50" y2="30" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>`,
+      `<line x1="50" y1="30" x2="120" y2="30" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>`,
+      `<line x1="120" y1="30" x2="120" y2="55" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>`,
+      `<circle cx="120" cy="70" r="15" stroke="currentColor" stroke-width="3" fill="none"/>`,
+      `<line x1="120" y1="85" x2="120" y2="130" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>`,
+      `<line x1="120" y1="100" x2="100" y2="120" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>`,
+      `<line x1="120" y1="100" x2="140" y2="120" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>`,
+      `<line x1="120" y1="130" x2="100" y2="155" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>`,
+      `<line x1="120" y1="130" x2="140" y2="155" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>`
+    ];
+    // On affiche progressivement : potence (3) + 1 par erreur
+    const visible = Math.min(parts.length, 3 + errors);
+    return `<svg viewBox="0 0 160 200" class="pendu-svg">${parts.slice(0, visible).join("")}</svg>`;
+  }
+
+  function guessPendu(letter){
+    const st = penduState;
+    if(st.over) return;
+    if(st.mot.includes(letter)){
+      st.found.add(letter);
+    } else {
+      st.wrongLetters.add(letter);
+      st.errors++;
+    }
+
+    const won = st.mot.split("").every(ch => st.found.has(ch));
+    const lost = st.errors >= st.maxErrors;
+
+    if(won){
+      st.over = true;
+      st.score += 20;
+      gamesStore.penduScore = st.score;
+      saveGames(gamesStore);
+    } else if(lost){
+      st.over = true;
+    }
+
+    renderPendu();
+
+    if(won || lost){
+      const fb = $("#penduFeedback");
+      fb.innerHTML = `
+        <div class="quiz-feedback show">
+          <div class="quiz-fb-title ${won ? "ok" : "ko"}">${won ? "✅ Gagné ! +20 points" : "❌ Perdu !"}</div>
+          <div class="quiz-fb-exp">Le sigle était : <b>${escapeHtml(st.mot)}</b> — ${escapeHtml(SIGLES[st.mot] || "")}</div>
+          <button class="btn quiz-next" id="penduNextBtn">Nouvelle manche</button>
+        </div>
+      `;
+      $("#penduNextBtn").addEventListener("click", startPendu);
+    }
+  }
+
+  /* ---------- JEU 3 : COURSE CONTRE LA MONTRE ---------- */
+
+  function startCourse(){
+    courseState = {
+      timeLeft: 60,
+      score: 0,
+      timer: null,
+      current: null,
+      answered: false,
+      over: false
+    };
+    renderCourse();
+    courseState.timer = setInterval(() => {
+      courseState.timeLeft--;
+      const el = $("#courseTimer");
+      if(el) el.textContent = courseState.timeLeft;
+      if(courseState.timeLeft <= 0){
+        endCourse();
+      }
+    }, 1000);
+    nextCourseQuestion();
+  }
+
+  function renderCourse(){
+    const zone = $("#gamesContent");
+    zone.innerHTML = `
+      <div class="game-head">
+        <span class="game-title">⏱️ Course contre la montre</span>
+        <span class="game-score">Score : <b id="courseScore">${courseState.score}</b></span>
+      </div>
+      <div class="course-timer-wrap">
+        <div class="course-timer" id="courseTimer">${courseState.timeLeft}</div>
+        <div class="course-timer-label">secondes</div>
+      </div>
+      <div id="courseQuestion"></div>
+      <button class="btn ghost" id="gamesBackBtn" style="margin-top:16px">← Retour au menu</button>
+    `;
+    $("#gamesBackBtn").addEventListener("click", () => {
+      if(courseState.timer) clearInterval(courseState.timer);
+      renderGamesMenu();
+    });
+  }
+
+  function nextCourseQuestion(){
+    if(courseState.over) return;
+    const q = QUIZ_BANK[Math.floor(Math.random() * QUIZ_BANK.length)];
+    courseState.current = q;
+    courseState.answered = false;
+
+    const zone = $("#courseQuestion");
+    zone.innerHTML = `
+      <div class="quiz-card" style="margin-top:16px">
+        <div class="quiz-qnum">${escapeHtml(q.matiere)}</div>
+        <div class="quiz-question">${escapeHtml(q.q)}</div>
+        <div class="quiz-options">
+          ${q.options.map((opt,i) => `<button class="quiz-opt" data-idx="${i}">${escapeHtml(opt)}</button>`).join("")}
+        </div>
+      </div>
+    `;
+    $$("#courseQuestion .quiz-opt").forEach(btn => {
+      btn.addEventListener("click", () => answerCourse(parseInt(btn.dataset.idx,10)));
+    });
+  }
+
+  function answerCourse(idx){
+    if(courseState.answered || courseState.over) return;
+    courseState.answered = true;
+    const q = courseState.current;
+    const correct = idx === q.bonne;
+
+    if(correct) courseState.score++;
+    else courseState.score = Math.max(0, courseState.score - 1);
+
+    const scoreEl = $("#courseScore");
+    if(scoreEl) scoreEl.textContent = courseState.score;
+
+    $$("#courseQuestion .quiz-opt").forEach(btn => {
+      const i = parseInt(btn.dataset.idx,10);
+      btn.disabled = true;
+      if(i === q.bonne) btn.classList.add("good");
+      else if(i === idx) btn.classList.add("bad");
+    });
+
+    setTimeout(() => {
+      if(!courseState.over) nextCourseQuestion();
+    }, 600);
+  }
+
+  function endCourse(){
+    if(courseState.over) return;
+    courseState.over = true;
+    if(courseState.timer) clearInterval(courseState.timer);
+
+    const isRecord = courseState.score > gamesStore.courseBest;
+    if(isRecord){
+      gamesStore.courseBest = courseState.score;
+      saveGames(gamesStore);
+    }
+
+    $("#gamesContent").innerHTML = `
+      <div class="quiz-result">
+        <div class="quiz-result-mat">Course contre la montre</div>
+        <div class="quiz-result-note">${courseState.score}<span> pts</span></div>
+        <div class="quiz-result-detail">${isRecord ? "🏆 Nouveau record !" : "Record : " + gamesStore.courseBest + " pts"}</div>
+        <div class="quiz-result-msg">${courseState.score >= 10 ? "Impressionnant ! 🚀" : courseState.score >= 5 ? "Bien joué ! 👍" : "Continue à t'entraîner ! 💪"}</div>
+        <button class="btn" id="courseRestartBtn">Rejouer</button>
+        <button class="btn ghost" id="gamesBackBtn">← Retour au menu</button>
+      </div>
+    `;
+    $("#courseRestartBtn").addEventListener("click", startCourse);
+    $("#gamesBackBtn").addEventListener("click", renderGamesMenu);
+  }
+
+  /* ============================================================
      NAVIGATION
      ============================================================ */
 
@@ -758,6 +1260,7 @@
     renderEvening();
     renderCourses("");
     renderQuizSelector();
+    renderGamesMenu();
     $("#calcCount").textContent = store.calcCount || 0;
 
     // Rafraîchir l'onglet Aujourd'hui toutes les 30 s
