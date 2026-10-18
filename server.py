@@ -57,6 +57,19 @@ app.config.update(
 # --------------------------------------------------------------------------
 # Base de données
 # --------------------------------------------------------------------------
+def _lire_env(cle):
+    chemin = os.path.join(BASE, ".env")
+    if os.path.exists(chemin):
+        with open(chemin, encoding="utf-8") as f:
+            for ligne in f:
+                ligne = ligne.strip()
+                if ligne.startswith(cle + "="):
+                    return ligne.split("=", 1)[1].strip()
+    return os.environ.get(cle, "")
+
+
+ELEVEN_API_KEY = _lire_env("ELEVENLABS_API_KEY")
+ELEVEN_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "").strip() or "Vza9yt3uSx3RXnRx6YfI"
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 USE_PG = bool(DATABASE_URL)
 
@@ -341,6 +354,46 @@ def health():
     except Exception as e:
         info["db"] = str(e)[:300]
     return jsonify(info)
+
+
+INTRO_SCRIPT = (
+    "Bienvenue sur Quai, l'application de révision du Brevet de Technicien. "
+    "Tu es en filière Transport, Logistique et Transit, une filière d'avenir. "
+    "La logistique, c'est faire circuler les marchandises, l'information et l'argent, partout dans le monde. "
+    "Le port d'Abidjan est le premier port d'Afrique de l'Ouest : c'est la porte du Sahel. "
+    "La douane représente une grande part des recettes de l'État ivoirien. "
+    "Quatre secteurs : le routier, le ferroviaire, le maritime et l'aérien. "
+    "Deux modules : l'UEG, l'enseignement général, et l'UEP, l'enseignement professionnel. "
+    "Le BT, c'est le Brevet de Technicien, le diplôme qui ouvre les portes. "
+    "Dans l'application : quarante-cinq matières, quarante-quatre cours, des fiches, des quiz, des jeux et un coach intelligent. "
+    "Union, discipline, marasse. "
+    "Quai a été créé pour t'aider à réussir ton BT : des fiches à retenir, des cartes, un suivi, et une voix qui t'accompagne. "
+    "Les prochaines mises à jour : des examens blancs, plus de cours, et le mode hors-ligne. "
+    "Bonne chance pour le BT."
+)
+
+
+@app.route("/api/intro-audio")
+@login_required
+def intro_audio():
+    chemin = os.path.join(BASE, "intro.mp3")
+    if not os.path.exists(chemin):
+        if not ELEVEN_API_KEY:
+            return jsonify(ok=False, error="Voix non configurée."), 503
+        try:
+            req = _ur.Request(
+                "https://api.elevenlabs.io/v1/text-to-speech/" + ELEVEN_VOICE_ID,
+                data=_json.dumps({"text": INTRO_SCRIPT, "model_id": "eleven_multilingual_v2"}).encode(),
+                headers={"xi-api-key": ELEVEN_API_KEY, "Content-Type": "application/json"},
+                method="POST")
+            with _ur.urlopen(req, timeout=120) as r:
+                audio = r.read()
+            with open(chemin, "wb") as f:
+                f.write(audio)
+        except Exception as e:
+            return jsonify(ok=False, error=str(e)[:200]), 502
+    return send_from_directory(BASE, "intro.mp3")
+
 
 @app.route("/login")
 def login_page():
@@ -768,7 +821,38 @@ def api_tts():
 
     import base64
 
-    # 1) Edge TTS — voix neuronale gratuite (aucune cle)
+    # 0) ElevenLabs (voix principale, cachee pour economiser les credits)
+    if ELEVEN_API_KEY:
+        try:
+            cache_dir = os.path.join(BASE, "tts_cache")
+            os.makedirs(cache_dir, exist_ok=True)
+            import hashlib
+            h = hashlib.md5((ELEVEN_VOICE_ID + "|" + texte + "|" + str(vitesse)).encode()).hexdigest()
+            f_cache = os.path.join(cache_dir, h + ".mp3")
+            if os.path.exists(f_cache):
+                with open(f_cache, "rb") as f:
+                    audio = f.read()
+            else:
+                req = _ur.Request(
+                    "https://api.elevenlabs.io/v1/text-to-speech/" + ELEVEN_VOICE_ID,
+                    data=_json.dumps({"text": texte, "model_id": "eleven_multilingual_v2"}).encode(),
+                    headers={"xi-api-key": ELEVEN_API_KEY, "Content-Type": "application/json"},
+                    method="POST")
+                with _ur.urlopen(req, timeout=60) as r:
+                    audio = r.read()
+                if audio:
+                    try:
+                        with open(f_cache, "wb") as f:
+                            f.write(audio)
+                    except Exception:
+                        pass
+            if audio:
+                return jsonify(ok=True, source="elevenlabs",
+                               audio="data:audio/mpeg;base64," + base64.b64encode(audio).decode())
+        except Exception:
+            pass
+
+    # 1) Edge TTS — repli gratuit (aucune cle)
     try:
         import asyncio
         import tempfile

@@ -4412,7 +4412,18 @@
 (function(){
   var intro = document.getElementById("intro");
   if(!intro) return;
+  // Narration de l'intro (ElevenLabs, générée une seule fois côté serveur)
+  try{
+    if(!localStorage.getItem("introVu")){
+      var _audioIntro = new Audio("/api/intro-audio");
+      _audioIntro.volume = 0.95;
+      _audioIntro.play().catch(function(){});
+      window._audioIntro = _audioIntro;
+    }
+  }catch(e){}
+
   function fermer(){
+    try{ if(window._audioIntro){ window._audioIntro.pause(); } }catch(e){}
     intro.classList.add("sortie");
     try{ localStorage.setItem("introVu","1"); }catch(e){}
     setTimeout(function(){ intro.style.display = "none"; }, 900);
