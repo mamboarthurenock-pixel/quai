@@ -220,7 +220,7 @@
      GARDE-FOU ANTI-RÉPÉTITION (questions déjà vues)
      ============================================================ */
 
-  const SEEN_KEY = "lpcc_seen_v1";
+  const SEEN_KEY = "seen";
   const SEEN_TTL = 24 * 60 * 60 * 1000; // 1 jour
 
   function questionId(q){
@@ -824,7 +824,8 @@
       renderQuizSelector();
       return;
     }
-    const questions = orderByFreshness(pool);
+    // Priorité aux questions non vues
+    const questions = prioriserQuestions(pool);
     quizState = {
       matiere,
       questions,
@@ -1163,7 +1164,8 @@
   function renderWheelQuestion(){
     const matiere = wheelState.current;
     const pool = WHEEL_QUESTIONS[matiere];
-    const q = pickQuestion(pool) || pool[0];
+    const candidates = prioriserQuestions(pool);
+    const q = candidates[Math.floor(Math.random() * candidates.length)];
     wheelState.question = q;
 
     const zone = $("#wheelQuestion");
@@ -1683,7 +1685,7 @@
      FLASHCARDS — Répétition espacée (SM-2)
      ============================================================ */
 
-  const SM2_KEY = "lpcc_sm2_v1";
+  const SM2_KEY = "sm2";
   const DAY_MS = 24 * 60 * 60 * 1000;
 
   function loadSM2(){
@@ -1716,16 +1718,9 @@
     saveSM2(sm2Store);
   }
 
-  // Une carte est due si jamais vue ou si due <= maintenant
-  function carteDue(q){
-    const id = questionId(q);
-    if(!questionVue(id)) return true;
+  function sm2Due(id){
     const c = sm2Get(id);
     return c.due <= Date.now();
-  }
-
-  function cartesDues(){
-    return QUIZ_BANK.filter(carteDue);
   }
 
   // SM-2 simplifié
@@ -1749,128 +1744,14 @@
     return card;
   }
 
-  let flashState = null;
-
-  function renderFlashcardsHome(){
-    const zone = $("#flashcardsZone");
-    if(!zone) return;
-    const dues = cartesDues();
-    const total = QUIZ_BANK.length;
-    zone.innerHTML = `
-      <div class="card flash-home">
-        <div class="flash-home-row">
-          <div>
-            <div class="flash-home-title">🃏 Cartes du jour</div>
-            <div class="flash-home-sub">${dues.length} carte${dues.length > 1 ? "s" : ""} à réviser sur ${total}</div>
-          </div>
-          <button class="btn btn-ai flash-start" id="flashStartBtn" ${dues.length ? "" : "disabled"}>
-            ${dues.length ? "Commencer" : "À jour ✓"}
-          </button>
-        </div>
-      </div>
-    `;
-    const btn = $("#flashStartBtn");
-    if(btn) btn.addEventListener("click", startFlashcards);
-  }
-
-  function startFlashcards(){
-    const dues = shuffle(cartesDues());
-    if(!dues.length){
-      renderFlashcardsHome();
-      return;
-    }
-    flashState = {
-      queue: dues,
-      index: 0,
-      flipped: false,
-      done: 0
-    };
-    renderFlashcard();
-  }
-
-  function renderFlashcard(){
-    const zone = $("#flashcardsZone");
-    if(!zone || !flashState) return;
-
-    if(flashState.index >= flashState.queue.length){
-      renderFlashcardsDone();
-      return;
-    }
-
-    const q = flashState.queue[flashState.index];
-    const total = flashState.queue.length;
-    const pos = flashState.index + 1;
-    const progress = Math.round((flashState.index / total) * 100);
-
-    zone.innerHTML = `
-      <div class="flash-head">
-        <span class="flash-mat">${escapeHtml(q.matiere)}</span>
-        <span class="flash-count">${pos} / ${total}</span>
-      </div>
-      <div class="quiz-progress"><div class="quiz-progress-bar" style="width:${progress}%"></div></div>
-      <div class="flash-scene">
-        <div class="flash-card ${flashState.flipped ? "flipped" : ""}" id="flashCard">
-          <div class="flash-face flash-front">
-            <div class="flash-label">Question</div>
-            <div class="flash-question">${escapeHtml(q.q)}</div>
-            <button class="btn flash-flip-btn" id="flashFlipBtn">Retourner</button>
-          </div>
-          <div class="flash-face flash-back">
-            <div class="flash-label">Réponse</div>
-            <div class="flash-answer">${escapeHtml(q.options[q.bonne])}</div>
-            <div class="flash-exp">${escapeHtml(q.explication)}</div>
-            <div class="flash-actions">
-              <button class="btn flash-good" id="flashGoodBtn">😊 Je savais</button>
-              <button class="btn ghost flash-bad" id="flashBadBtn">🤔 À revoir</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-
-    const flip = $("#flashFlipBtn");
-    if(flip) flip.addEventListener("click", () => {
-      flashState.flipped = true;
-      const card = $("#flashCard");
-      if(card) card.classList.add("flipped");
+  // Cartes dues : non vues OU dues selon SM-2
+  function cartesDuJour(){
+    return QUIZ_BANK.filter(q => {
+      const id = questionId(q);
+      if(!questionVue(id)) return true;
+      return sm2Due(id);
     });
-
-    const good = $("#flashGoodBtn");
-    if(good) good.addEventListener("click", () => answerFlashcard(true));
-    const bad = $("#flashBadBtn");
-    if(bad) bad.addEventListener("click", () => answerFlashcard(false));
   }
-
-  function answerFlashcard(savait){
-    if(!flashState) return;
-    const q = flashState.queue[flashState.index];
-    sm2Review(questionId(q), savait);
-    flashState.done++;
-    flashState.index++;
-    flashState.flipped = false;
-    renderFlashcard();
-  }
-
-  function renderFlashcardsDone(){
-    const zone = $("#flashcardsZone");
-    if(!zone) return;
-    const done = flashState ? flashState.done : 0;
-    zone.innerHTML = `
-      <div class="quiz-result">
-        <div class="quiz-result-mat">Cartes du jour</div>
-        <div class="quiz-result-note">${done}<span> carte${done > 1 ? "s" : ""}</span></div>
-        <div class="quiz-result-msg">Session terminée ! Reviens demain pour les prochaines révisions. 🎯</div>
-        <button class="btn" id="flashAgainBtn">Voir les cartes dues</button>
-      </div>
-    `;
-    flashState = null;
-    const again = $("#flashAgainBtn");
-    if(again) again.addEventListener("click", renderFlashcardsHome);
-  }
-
-  /* ============================================================
-     FLASHCARDS — Cartes du jour (SM-2)
-     ============================================================ */
 
   let flashState = null;
 
@@ -2223,7 +2104,7 @@
     renderQuizSelector();
     renderGamesMenu();
     initEtude();
-    renderFlashcardsHome();
+    initFlashcards();
     initAssistant();
     $("#calcCount").textContent = store.calcCount || 0;
 
