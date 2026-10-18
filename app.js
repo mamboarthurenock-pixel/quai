@@ -1291,3 +1291,17 @@
     init();
   }
 })();
+
+/* ---------- Déconnexion ---------- */
+(function(){
+  var btn = document.getElementById("logoutBtn");
+  if(!btn) return;
+  btn.addEventListener("click", function(){
+    if(btn.disabled) return;
+    btn.disabled = true;
+    btn.classList.add("loading");
+    fetch("/api/logout", { method: "POST", credentials: "same-origin" })
+      .catch(function(){})
+      .finally(function(){ window.location.href = "/login"; });
+  });
+})();
