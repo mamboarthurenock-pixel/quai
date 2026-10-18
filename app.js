@@ -1360,6 +1360,242 @@
   }
 
   /* ============================================================
+     ÉTUDE — Fiches « À retenir »
+     ============================================================ */
+
+  let etudeState = {
+    loaded: false,
+    loading: false,
+    error: null,
+    items: [],
+    matiere: "",
+    fichier: "",
+    fiche: null,
+    generating: false
+  };
+
+  function etudeCacheKey(fichier){
+    return "fiche:" + fichier;
+  }
+
+  function getFicheCache(fichier){
+    try{
+      const raw = localStorage.getItem(etudeCacheKey(fichier));
+      if(!raw) return null;
+      return JSON.parse(raw);
+    }catch(e){ return null; }
+  }
+
+  function setFicheCache(fichier, fiche){
+    try{ localStorage.setItem(etudeCacheKey(fichier), JSON.stringify(fiche)); }catch(e){}
+  }
+
+  async function initEtude(){
+    const selMat = $("#etudeMatiere");
+    const selCours = $("#etudeCours");
+    if(!selMat || !selCours) return;
+
+    if(etudeState.loading) return;
+    etudeState.loading = true;
+
+    try{
+      const res = await fetch("/api/cours", {credentials:"same-origin"});
+      let data = null;
+      try{ data = await res.json(); }catch(e){ data = null; }
+      if(!res.ok || !data || !data.ok){
+        etudeState.error = (data && data.error) || ("Erreur serveur (" + res.status + ")");
+        etudeState.items = [];
+      } else {
+        etudeState.items = Array.isArray(data.cours) ? data.cours : [];
+      }
+    }catch(e){
+      etudeState.error = "Impossible de charger les cours.";
+      etudeState.items = [];
+    }finally{
+      etudeState.loading = false;
+      etudeState.loaded = true;
+    }
+
+    // Remplir les matières uniques
+    const matieres = Array.from(new Set(
+      etudeState.items.map(c => c.matiere).filter(Boolean)
+    )).sort((a,b) => a.localeCompare(b, "fr"));
+
+    selMat.innerHTML = '<option value="">— Matière —</option>' +
+      matieres.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join("");
+
+    selCours.innerHTML = '<option value="">— Choisis un cours —</option>';
+
+    selMat.addEventListener("change", () => {
+      etudeState.matiere = selMat.value;
+      etudeState.fichier = "";
+      etudeState.fiche = null;
+      const list = etudeState.items
+        .filter(c => c.matiere === etudeState.matiere)
+        .sort((a,b) => String(a.fichier || "").localeCompare(String(b.fichier || ""), "fr"));
+      selCours.innerHTML = '<option value="">— Choisis un cours —</option>' +
+        list.map(c => `<option value="${escapeHtml(c.fichier || "")}">${escapeHtml(cleanFileName(c.fichier))}</option>`).join("");
+      $("#etudeContent").innerHTML = "";
+    });
+
+    selCours.addEventListener("change", () => {
+      etudeState.fichier = selCours.value;
+      etudeState.fiche = null;
+      renderEtudeSelection();
+    });
+  }
+
+  function renderEtudeSelection(){
+    const zone = $("#etudeContent");
+    if(!zone) return;
+    if(!etudeState.fichier){
+      zone.innerHTML = "";
+      return;
+    }
+    const cours = etudeState.items.find(c => c.fichier === etudeState.fichier);
+    const titre = cours ? cleanFileName(cours.fichier) : etudeState.fichier;
+
+    zone.innerHTML = `
+      <div class="card etude-card">
+        <h3 class="etude-title">${escapeHtml(titre)}</h3>
+        <div class="etude-meta">${escapeHtml((cours && cours.matiere) || "")}</div>
+        <button class="btn btn-ai" id="etudeGen">✨ Générer la fiche À retenir</button>
+        <div id="etudeGenState"></div>
+      </div>
+    `;
+
+    const btn = $("#etudeGen");
+    if(btn) btn.addEventListener("click", genererFiche);
+  }
+
+  async function genererFiche(){
+    if(etudeState.generating) return;
+    const cours = etudeState.items.find(c => c.fichier === etudeState.fichier);
+    if(!cours) return;
+
+    const cached = getFicheCache(cours.fichier);
+    if(cached){
+      etudeState.fiche = cached;
+      afficheFiche(cached);
+      return;
+    }
+
+    etudeState.generating = true;
+    const btn = $("#etudeGen");
+    const state = $("#etudeGenState");
+    if(btn) btn.disabled = true;
+    if(state) state.innerHTML = '<div class="etude-loading">⏳ Génération de la fiche…</div>';
+
+    try{
+      const res = await fetch("/api/ai/fiche", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        credentials: "same-origin",
+        body: JSON.stringify({
+          texte: cours.texte || "",
+          titre: cleanFileName(cours.fichier)
+        })
+      });
+      let data = null;
+      try{ data = await res.json(); }catch(e){ data = null; }
+
+      if(!res.ok || !data || !data.ok){
+        const msg = (data && (data.error || data.message)) || ("Erreur serveur (" + res.status + ")");
+        if(state) state.innerHTML = `<div class="etude-error">⚠️ ${escapeHtml(msg)}</div>`;
+        return;
+      }
+
+      const fiche = data.fiche || data;
+      etudeState.fiche = fiche;
+      setFicheCache(cours.fichier, fiche);
+      afficheFiche(fiche);
+    }catch(e){
+      if(state) state.innerHTML = '<div class="etude-error">⚠️ Impossible de générer la fiche.</div>';
+    }finally{
+      etudeState.generating = false;
+      if(btn) btn.disabled = false;
+    }
+  }
+
+  function afficheFiche(fiche){
+    const zone = $("#etudeContent");
+    if(!zone) return;
+
+    const points = Array.isArray(fiche.points) ? fiche.points : [];
+    const formules = Array.isArray(fiche.formules) ? fiche.formules : [];
+    const sigles = Array.isArray(fiche.sigles) ? fiche.sigles : [];
+    const pieges = Array.isArray(fiche.pieges) ? fiche.pieges : [];
+    const mnemo = fiche.mnemo || "";
+
+    const cours = etudeState.items.find(c => c.fichier === etudeState.fichier);
+    const titre = cours ? cleanFileName(cours.fichier) : etudeState.fichier;
+
+    let html = `
+      <div class="card etude-card">
+        <h3 class="etude-title">${escapeHtml(titre)}</h3>
+        <div class="etude-meta">${escapeHtml((cours && cours.matiere) || "")}</div>
+        <button class="btn btn-ai" id="etudeListen">🔊 Écouter la fiche</button>
+    `;
+
+    if(points.length){
+      html += `<div class="fiche-section">
+        <div class="fiche-section-title">À retenir</div>
+        <ol class="fiche-points">
+          ${points.map(p => `<li>${escapeHtml(p)}</li>`).join("")}
+        </ol>
+      </div>`;
+    }
+
+    if(formules.length){
+      html += `<div class="fiche-section">
+        <div class="fiche-section-title">Formules</div>
+        <div class="fiche-formules">
+          ${formules.map(f => `<div class="fiche-formule">${escapeHtml(f)}</div>`).join("")}
+        </div>
+      </div>`;
+    }
+
+    if(sigles.length){
+      html += `<div class="fiche-section">
+        <div class="fiche-section-title">Sigles</div>
+        <div class="fiche-sigles">
+          ${sigles.map(s => {
+            if(typeof s === "string") return `<span class="fiche-sigle">${escapeHtml(s)}</span>`;
+            const code = s.sigle || s.code || "";
+            const def = s.definition || s.def || "";
+            return `<span class="fiche-sigle"><b>${escapeHtml(code)}</b>${def ? " — " + escapeHtml(def) : ""}</span>`;
+          }).join("")}
+        </div>
+      </div>`;
+    }
+
+    if(pieges.length){
+      html += `<div class="fiche-section">
+        <div class="fiche-section-title">Pièges à éviter</div>
+        <div class="fiche-pieges">
+          ${pieges.map(p => `<div class="fiche-piege">⚠️ ${escapeHtml(p)}</div>`).join("")}
+        </div>
+      </div>`;
+    }
+
+    if(mnemo){
+      html += `<div class="fiche-section">
+        <div class="fiche-section-title">Mnémo</div>
+        <div class="fiche-mnemo">💡 ${escapeHtml(mnemo)}</div>
+      </div>`;
+    }
+
+    html += `</div>`;
+    zone.innerHTML = html;
+
+    const listen = $("#etudeListen");
+    if(listen) listen.addEventListener("click", () => {
+      const texte = points.join(". ") + (mnemo ? ". " + mnemo : "");
+      if(typeof window.lireTexte === "function") window.lireTexte(texte);
+    });
+  }
+
+  /* ============================================================
      ASSISTANT — Coach IA + Voix off
      ============================================================ */
 
@@ -1584,6 +1820,7 @@
     loadCours();
     renderQuizSelector();
     renderGamesMenu();
+    initEtude();
     initAssistant();
     $("#calcCount").textContent = store.calcCount || 0;
 
