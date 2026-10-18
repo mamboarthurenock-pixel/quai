@@ -3768,6 +3768,96 @@
   }
 
   /* ============================================================
+     BANNIÈRES D'ONGLET (image générée, cache, file d'attente)
+     ============================================================ */
+
+  const BANNER_PROMPTS = {
+    today:     "photo réaliste, port d'Abidjan, grues, conteneurs, lumière dorée, 16:9",
+    evening:   "entrepôt logistique au coucher du soleil, 16:9",
+    courses:   "bibliothèque, livres, transport logistique, 16:9",
+    etude:     "étudiant révisant, cahiers, transport, 16:9",
+    quiz:      "salle de classe, concentration, quiz, 16:9",
+    games:     "jeu, défi, énergie, 16:9",
+    anglais:   "Londres, transport, drapeau anglais, 16:9",
+    assistant: "intelligence artificielle, coach, 16:9"
+  };
+
+  const bannerCache = {};      // tab -> url (mémoire)
+  const bannerPending = {};    // tab -> true (en cours / déjà demandé)
+  let bannerQueue = Promise.resolve();
+
+  function bannerKey(tab){
+    return "banner:" + tab;
+  }
+
+  function getBannerCache(tab){
+    if(bannerCache[tab]) return bannerCache[tab];
+    try{
+      const v = localStorage.getItem(bannerKey(tab));
+      if(v){ bannerCache[tab] = v; return v; }
+    }catch(e){}
+    return null;
+  }
+
+  function setBannerCache(tab, url){
+    bannerCache[tab] = url;
+    try{ localStorage.setItem(bannerKey(tab), url); }catch(e){}
+  }
+
+  function ensureBanner(tab){
+    const section = $("#tab-" + tab);
+    if(!section) return;
+    let banner = section.querySelector(".tab-banner");
+    if(!banner){
+      banner = document.createElement("div");
+      banner.className = "tab-banner";
+      section.insertBefore(banner, section.firstChild);
+    }
+    if(banner.querySelector("img")) return;
+
+    const cached = getBannerCache(tab);
+    if(cached){
+      afficherBanner(banner, cached);
+      return;
+    }
+    if(bannerPending[tab]) return;
+    bannerPending[tab] = true;
+
+    const prompt = BANNER_PROMPTS[tab];
+    if(!prompt){ bannerPending[tab] = false; return; }
+
+    bannerQueue = bannerQueue.then(() => genererBanner(tab, prompt, banner))
+      .catch(() => {})
+      .finally(() => { bannerPending[tab] = false; });
+  }
+
+  function afficherBanner(banner, url){
+    const img = document.createElement("img");
+    img.alt = "";
+    img.loading = "lazy";
+    img.addEventListener("load", () => img.classList.add("loaded"));
+    img.src = url;
+    banner.innerHTML = "";
+    banner.appendChild(img);
+  }
+
+  async function genererBanner(tab, prompt, banner){
+    try{
+      const res = await fetch("/api/ai/image", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        credentials: "same-origin",
+        body: JSON.stringify({prompt})
+      });
+      let data = null;
+      try{ data = await res.json(); }catch(e){ data = null; }
+      if(!res.ok || !data || !data.ok || !data.image) return;
+      setBannerCache(tab, data.image);
+      if(banner && banner.isConnected) afficherBanner(banner, data.image);
+    }catch(e){}
+  }
+
+  /* ============================================================
      NAVIGATION
      ============================================================ */
 
@@ -3778,6 +3868,7 @@
     const btn = document.querySelector(`.nav-btn[data-tab="${name}"]`);
     if(tab) tab.classList.add("active");
     if(btn) btn.classList.add("active");
+    ensureBanner(name);
     window.scrollTo({top:0, behavior:"smooth"});
   }
 
@@ -3810,6 +3901,12 @@
     $$(".nav-btn").forEach(btn => {
       btn.addEventListener("click", () => switchTab(btn.dataset.tab));
     });
+
+    // Bannière de l'onglet actif au démarrage
+    const activeTab = document.querySelector(".tab.active");
+    if(activeTab && activeTab.id.indexOf("tab-") === 0){
+      ensureBanner(activeTab.id.slice(4));
+    }
 
     // Recherche
     $("#searchInput").addEventListener("input", (e) => {
