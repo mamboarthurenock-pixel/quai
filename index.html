@@ -191,6 +191,10 @@
       <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg></span>
       Cours
     </button>
+    <button class="nav-btn" data-tab="ajouter">
+      <span class="ni">📤</span>
+      <span>Ajouter</span>
+    </button>
     <button class="nav-btn" data-tab="coach">
       <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></span>
       Coach
@@ -432,6 +436,19 @@
       </div>
     </div>
   </section>
+  <section class="tab" id="tab-ajouter">
+    <p class="tab-desc">Ajoute un nouveau cours : PDF, ODT ou DOCX. L'IA le classe automatiquement.</p>
+    <div class="upload-card">
+      <label class="upload-zone" for="uploadInput">
+        <span class="upload-ico">📤</span>
+        <span class="upload-txt">Choisir un ou plusieurs fichiers</span>
+        <small class="upload-hint">PDF · ODT · DOCX</small>
+        <input id="uploadInput" type="file" multiple accept=".pdf,.odt,.docx,.txt" hidden>
+      </label>
+      <div class="upload-list" id="uploadList"></div>
+    </div>
+  </section>
+
 </main>
 </div>
 

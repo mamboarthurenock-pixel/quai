@@ -50,7 +50,7 @@ app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=False,   # True derrière HTTPS
-    MAX_CONTENT_LENGTH=1 * 1024 * 1024,
+    MAX_CONTENT_LENGTH=25 * 1024 * 1024,
 )
 
 
@@ -456,6 +456,69 @@ def api_courses_upload():
         conn.close()
     return jsonify(ok=True, action=action, id=cid, matiere=matiere, niveau=niveau)
 
+
+
+
+def _extraire_fichier(nom, data):
+    """Extrait le texte d'un PDF / ODT / DOCX / TXT (côté serveur)."""
+    ext = nom.lower().rsplit(".", 1)[-1]
+    import io
+    if ext == "pdf":
+        from pypdf import PdfReader
+        reader = PdfReader(io.BytesIO(data))
+        return "\n".join((p.extract_text() or "") for p in reader.pages)
+    if ext == "odt":
+        import zipfile, html as _html
+        with zipfile.ZipFile(io.BytesIO(data)) as z:
+            xml = z.read("content.xml").decode("utf-8", "replace")
+        xml = xml.replace("</text:p>", "\n").replace("</text:h>", "\n")
+        return _html.unescape(re.sub(r"<[^>]+>", "", xml))
+    if ext == "docx":
+        import zipfile, html as _html
+        with zipfile.ZipFile(io.BytesIO(data)) as z:
+            xml = z.read("word/document.xml").decode("utf-8", "replace")
+        xml = xml.replace("</w:p>", "\n")
+        return _html.unescape(re.sub(r"<[^>]+>", "", xml))
+    if ext in ("txt", "md"):
+        return data.decode("utf-8", "replace")
+    return ""
+
+
+@app.route("/api/courses/upload-file", methods=["POST"])
+@login_required
+def api_courses_upload_file():
+    """Upload multipart d'un fichier (depuis PC, iPhone ou Android)."""
+    if "fichier" not in request.files:
+        return jsonify(ok=False, error="Aucun fichier reçu."), 400
+    f = request.files["fichier"]
+    nom = f.filename or "sans-nom"
+    data = f.read()
+    if not data:
+        return jsonify(ok=False, error="Fichier vide."), 400
+    try:
+        texte = _extraire_fichier(nom, data)
+    except Exception as e:
+        return jsonify(ok=False, error="Extraction impossible : " + str(e)[:120]), 500
+    if len(texte.strip()) < 80:
+        return jsonify(ok=False, error="Texte extrait trop court (scan/image ?)."), 400
+    matiere, niveau = agent_classer(nom, texte)
+    conn = db()
+    try:
+        row = conn.execute("SELECT id FROM courses WHERE fichier = ?", (nom,)).fetchone()
+        if row:
+            conn.execute("UPDATE courses SET texte = ?, matiere = ?, niveau = ?, statut = 'brut' WHERE id = ?",
+                         (texte[:50000], matiere, niveau, row["id"]))
+            cid, action = row["id"], "maj"
+        else:
+            conn.execute("INSERT INTO courses (fichier, dossier, niveau, matiere, texte) VALUES (?, ?, ?, ?, ?)",
+                         (nom, "Upload", niveau, matiere, texte[:50000]))
+            row2 = conn.execute("SELECT id FROM courses WHERE fichier = ?", (nom,)).fetchone()
+            cid, action = row2["id"], "ajout"
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify(ok=True, action=action, id=cid, matiere=matiere, niveau=niveau,
+                   caracteres=len(texte))
 
 @app.route("/api/courses/manque", methods=["GET"])
 @login_required

@@ -4165,6 +4165,7 @@
     safe(initAnglais, "anglais");
     safe(initAssistant, "assistant");
     safe(initBienvenue, "bienvenue");
+    safe(initAjouter, "ajouter");
     safe(renderSuivi, "suivi");
 
     var cc = $("#calcCount");
@@ -4525,5 +4526,43 @@ function renderPlanDuJour(){
       var btn = document.querySelector('.nav-btn[data-tab="' + b.dataset.tab + '"]');
       if(btn) btn.click();
     });
+  });
+}
+
+
+/* ===== AJOUTER UN COURS (upload) ===== */
+function initAjouter(){
+  var input = document.getElementById("uploadInput");
+  var list = document.getElementById("uploadList");
+  if(!input || !list) return;
+
+  input.addEventListener("change", function(){
+    var fichiers = Array.prototype.slice.call(input.files || []);
+    if(!fichiers.length) return;
+    list.innerHTML = "";
+    fichiers.forEach(function(f){
+      var item = document.createElement("div");
+      item.className = "upload-item";
+      item.innerHTML = '<span>⏳</span><b>' + f.name.replace(/[<>&]/g, "") + '</b>';
+      list.appendChild(item);
+
+      var fd = new FormData();
+      fd.append("fichier", f);
+      fetch("/api/courses/upload-file", {method: "POST", credentials: "same-origin", body: fd})
+        .then(function(r){ return r.json().then(function(j){ return {s: r.status, j: j}; }); })
+        .then(function(res){
+          if(res.j && res.j.ok){
+            item.innerHTML = '<span>✅</span><b>' + f.name.replace(/[<>&]/g, "") +
+              '</b><small>' + res.j.matiere + ' / ' + res.j.niveau + '</small>';
+          } else {
+            item.innerHTML = '<span>⚠️</span><b>' + f.name.replace(/[<>&]/g, "") +
+              '</b><small>' + ((res.j && res.j.error) || 'erreur') + '</small>';
+          }
+        })
+        .catch(function(){
+          item.innerHTML = '<span>⚠️</span><b>' + f.name.replace(/[<>&]/g, "") + '</b><small>échec réseau</small>';
+        });
+    });
+    input.value = "";
   });
 }
