@@ -9,6 +9,7 @@ Lancement :  python3 server.py
 Accès    :  http://127.0.0.1:5000
 """
 import os
+import json
 import re
 import sqlite3
 import secrets
@@ -125,6 +126,20 @@ def init_db():
                     created_at TIMESTAMP NOT NULL DEFAULT now()
                 )
             """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS courses (
+                    id SERIAL PRIMARY KEY,
+                    fichier TEXT UNIQUE NOT NULL,
+                    dossier TEXT,
+                    niveau TEXT,
+                    matiere TEXT,
+                    texte TEXT,
+                    fiche TEXT,
+                    questions TEXT,
+                    statut TEXT DEFAULT 'brut',
+                    created_at TIMESTAMP NOT NULL DEFAULT now()
+                )
+            """)
         else:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS users (
@@ -140,6 +155,20 @@ def init_db():
                     cle TEXT PRIMARY KEY,
                     mime TEXT NOT NULL,
                     data BLOB NOT NULL,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS courses (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    fichier TEXT UNIQUE NOT NULL,
+                    dossier TEXT,
+                    niveau TEXT,
+                    matiere TEXT,
+                    texte TEXT,
+                    fiche TEXT,
+                    questions TEXT,
+                    statut TEXT DEFAULT 'brut',
                     created_at TEXT NOT NULL DEFAULT (datetime('now'))
                 )
             """)
@@ -203,6 +232,105 @@ def _secret_key():
 init_db()
 app.secret_key = _secret_key()
 
+# --------------------------------------------------------------------------
+# AGENT D'ÉTUDE : migration + génération (DeepSeek)
+# --------------------------------------------------------------------------
+def migrer_cours():
+    """Charge cours_data.json dans la table courses si elle est vide."""
+    try:
+        conn = db()
+        try:
+            row = conn.execute("SELECT COUNT(*) AS n FROM courses").fetchone()
+            n = int(row["n"]) if row else 0
+        finally:
+            conn.close()
+        if n > 0:
+            return n
+        chemin = os.path.join(BASE, "cours_data.json")
+        if not os.path.exists(chemin):
+            return 0
+        with open(chemin, encoding="utf-8") as f:
+            data = json.load(f)
+        conn = db()
+        try:
+            for c in data:
+                try:
+                    conn.execute(
+                        "INSERT INTO courses (fichier, dossier, niveau, matiere, texte) VALUES (?, ?, ?, ?, ?)",
+                        (c.get("fichier"), c.get("dossier"), c.get("niveau"),
+                         c.get("matiere"), c.get("texte") or ""),
+                    )
+                except Exception:
+                    pass
+            conn.commit()
+        finally:
+            conn.close()
+        print("migration courses:", len(data))
+        return len(data)
+    except Exception as e:
+        print("migrer_cours:", e)
+        return 0
+
+
+PROMPT_AGENT = (
+    "Tu es un professeur expert en Transport Logistique Transit (TLT). "
+    "À partir du COURS ci-dessous, produis UNIQUEMENT un JSON valide (sans markdown) avec : "
+    '"points" (5 points essentiels, phrases courtes), '
+    '"formules" (max 4 formules/définitions), '
+    '"sigles" (max 6 "SIGLE : sens"), '
+    '"pieges" (max 3 pièges d examen), '
+    '"mnemo" (1 moyen mnémotechnique), '
+    '"questions" (10 objets {q, options:[4], bonne:index 0-3, explication}). '
+    "COURS :\n"
+)
+
+
+def agent_generer(course_id):
+    """Génère la fiche + 10 questions pour un cours (DeepSeek)."""
+    cle = _env("DEEPSEEK_API_KEY")
+    if not cle:
+        return {"ok": False, "error": "Clé DeepSeek absente"}
+    conn = db()
+    try:
+        row = conn.execute("SELECT * FROM courses WHERE id = ?", (course_id,)).fetchone()
+        if not row:
+            return {"ok": False, "error": "Cours introuvable"}
+        texte = (row["texte"] or "")[:12000]
+        if len(texte) < 80:
+            return {"ok": False, "error": "Cours trop court"}
+        try:
+            r = _post_json(
+                "https://api.deepseek.com/chat/completions",
+                {"model": "deepseek-chat",
+                 "messages": [
+                     {"role": "system", "content": "Tu réponds toujours en JSON strict."},
+                     {"role": "user", "content": PROMPT_AGENT + (row["fichier"] or "") + "\n" + texte},
+                 ],
+                 "max_tokens": 2000, "temperature": 0.3},
+                {"Authorization": "Bearer " + cle}, timeout=120)
+            contenu = r["choices"][0]["message"]["content"]
+            obj = _extraire_json(contenu)
+            if not obj:
+                return {"ok": False, "error": "JSON invalide"}
+            fiche = {k: obj.get(k) for k in ("points", "formules", "sigles", "pieges", "mnemo")}
+            questions = obj.get("questions") or []
+            conn.execute(
+                "UPDATE courses SET fiche = ?, questions = ?, statut = ? WHERE id = ?",
+                (json.dumps(fiche, ensure_ascii=False),
+                 json.dumps(questions, ensure_ascii=False), "pret", course_id))
+            conn.commit()
+            return {"ok": True, "id": course_id, "questions": len(questions)}
+        except Exception as e:
+            return {"ok": False, "error": str(e)[:200]}
+    finally:
+        conn.close()
+
+
+# Migration au démarrage
+migrer_cours()
+
+
+
 
 # --------------------------------------------------------------------------
 # Rate limiting simple (mémoire)
@@ -236,6 +364,39 @@ def login_required(f):
             return redirect("/login")
         return f(*a, **kw)
     return wrapper
+
+@app.route("/api/agent/run", methods=["POST"])
+@login_required
+def api_agent_run():
+    """Traite jusqu'à N cours sans fiche (l'agent travaille)."""
+    data = request.get_json(silent=True) or {}
+    limite = max(1, min(5, int(data.get("limite") or 1)))
+    conn = db()
+    try:
+        rows = conn.execute(
+            "SELECT id FROM courses WHERE fiche IS NULL ORDER BY id LIMIT ?", (limite,)).fetchall()
+    finally:
+        conn.close()
+    resultats = []
+    for r in rows:
+        resultats.append(agent_generer(r["id"]))
+    return jsonify(ok=True, traites=len(resultats), resultats=resultats)
+
+
+@app.route("/api/courses")
+@login_required
+def api_courses_db():
+    """Liste les cours depuis la base (léger, sans le texte)."""
+    conn = db()
+    try:
+        rows = conn.execute(
+            "SELECT id, fichier, niveau, matiere, statut FROM courses ORDER BY niveau, matiere, fichier"
+        ).fetchall()
+    finally:
+        conn.close()
+    return jsonify(ok=True, total=len(rows), cours=[dict(r) for r in rows])
+
+
 
 
 @app.after_request
