@@ -1340,6 +1340,48 @@
   box-shadow:inset 0 0 30px -12px rgba(251,191,36,.5),0 0 24px -12px rgba(251,191,36,.5);
 }
 
+/* ---------- Fiche : illustration générée ---------- */
+.fiche-image-wrap{
+  margin-top:20px;
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+}
+.btn-img{
+  width:auto;padding:12px 20px;font-size:14px;margin:0;
+  background:linear-gradient(135deg,rgba(167,139,250,.22),rgba(244,114,182,.22));
+  border:1px solid rgba(167,139,250,.5);
+  color:var(--text);
+  box-shadow:0 0 22px -10px rgba(167,139,250,.7);
+}
+.btn-img:hover{
+  background:linear-gradient(135deg,rgba(167,139,250,.32),rgba(244,114,182,.32));
+  box-shadow:0 0 30px -8px rgba(167,139,250,.9);
+  transform:translateY(-1px);
+}
+.btn-img:disabled{opacity:.6;cursor:default;transform:none}
+.fiche-image{
+  display:block;
+  max-width:100%;
+  height:auto;
+  border-radius:16px;
+  border:1px solid rgba(167,139,250,.35);
+  box-shadow:0 18px 44px -18px rgba(34,211,238,.6),0 0 32px -12px rgba(167,139,250,.5);
+  animation:fadeIn .6s ease both;
+}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.fiche-image-msg{
+  font-size:13px;color:var(--muted);font-family:var(--mono);
+  text-align:center;
+}
+.fiche-image-msg.err{color:var(--rose)}
+```
+
+app.js
+```javascript
+<<<<<<< SEARCH
+  function setFicheCache(fichier, fiche){
+    try{ localStorage.setItem(etudeCacheKey(fichier), JSON.stringify(fiche)); }catch(e){}
+  }
+
 /* ---------- Quiz : compteur de questions jamais vues ---------- */
 .quiz-fresh{
   font-size:11.5px;color:var(--muted);font-family:var(--mono);

@@ -1937,10 +1937,13 @@
     const cours = etudeState.items.find(c => c.fichier === etudeState.fichier);
     const titre = cours ? cleanFileName(cours.fichier) : etudeState.fichier;
 
+    const matiere = (cours && cours.matiere) || "";
+    const imgCached = getImgCache(titre);
+
     let html = `
       <div class="card etude-card">
         <h3 class="etude-title">${escapeHtml(titre)}</h3>
-        <div class="etude-meta">${escapeHtml((cours && cours.matiere) || "")}</div>
+        <div class="etude-meta">${escapeHtml(matiere)}</div>
         <button class="btn btn-ai" id="etudeListen">🔊 Écouter la fiche</button>
     `;
 
@@ -1992,6 +1995,18 @@
       </div>`;
     }
 
+    html += `<div class="fiche-section">
+      <div class="fiche-section-title">Illustration</div>
+      <div class="fiche-image-wrap">
+        <button class="btn btn-img" id="etudeImgBtn">🎨 Illustration</button>
+        <div id="etudeImgOut">${
+          imgCached
+            ? `<img class="fiche-image" src="${escapeHtml(imgCached)}" alt="Illustration de la fiche">`
+            : ""
+        }</div>
+      </div>
+    </div>`;
+
     html += `</div>`;
     zone.innerHTML = html;
 
@@ -1999,6 +2014,27 @@
     if(listen) listen.addEventListener("click", () => {
       const texte = points.join(". ") + (mnemo ? ". " + mnemo : "");
       if(typeof window.lireTexte === "function") window.lireTexte(texte);
+    });
+
+    const imgBtn = $("#etudeImgBtn");
+    if(imgBtn) imgBtn.addEventListener("click", async () => {
+      const out = $("#etudeImgOut");
+      if(!out) return;
+      const cached = getImgCache(titre);
+      if(cached){
+        out.innerHTML = `<img class="fiche-image" src="${escapeHtml(cached)}" alt="Illustration de la fiche">`;
+        return;
+      }
+      imgBtn.disabled = true;
+      out.innerHTML = `<div class="fiche-image-msg">⏳ Génération…</div>`;
+      try{
+        const img = await genererImageFiche(matiere, titre);
+        out.innerHTML = `<img class="fiche-image" src="${escapeHtml(img)}" alt="Illustration de la fiche">`;
+      }catch(e){
+        out.innerHTML = `<div class="fiche-image-msg err">🎨 Illustration indisponible pour l'instant. Réessaie dans un instant.</div>`;
+      }finally{
+        imgBtn.disabled = false;
+      }
     });
   }
 
