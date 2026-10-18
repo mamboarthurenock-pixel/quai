@@ -107,6 +107,10 @@
       <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg></span>
       Étude
     </button>
+    <button class="nav-btn" data-tab="anglais">
+      <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span>
+      Anglais
+    </button>
     <button class="nav-btn" data-tab="assistant">
       <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.9 9.9 0 0 1-3.8-.8L3 21l1.9-4.6A8.4 8.4 0 0 1 12 3.1a8.4 8.4 0 0 1 9 8.4z"/><path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01"/></svg></span>
       Assistant
@@ -321,6 +325,19 @@
       </div>
     </div>
     <div id="flashcardsZone"></div>
+  </section>
+
+  <!-- ============ ANGLAIS ============ -->
+  <section class="tab" id="tab-anglais">
+    <p class="tab-desc">Vocabulaire visuel de la filière Transport &amp; Logistique.</p>
+    <p class="section-title">Thèmes</p>
+    <div class="vocab-themes" id="vocabThemes"></div>
+    <div class="vocab-exo-bar">
+      <button class="btn btn-ai" id="vocabExoBtn">🎯 Exercice</button>
+      <div class="vocab-score" id="vocabScore">Score : <b>0</b> / 0</div>
+    </div>
+    <div id="vocabExoZone"></div>
+    <div class="vocab-grid" id="vocabGrid"></div>
   </section>
 
   <!-- ============ ASSISTANT ============ -->

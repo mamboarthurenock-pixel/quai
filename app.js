@@ -118,6 +118,50 @@
     "Anglais":["Vocabulaire transport/logistique","Relire le texte étudié","Préparer 5 phrases d'expression"]
   };
 
+  // Vocabulaire visuel TLT (anglais)
+  const VOCAB = {
+    "PORT": [
+      {en:"port", fr:"port", ex:"The ship arrives at the port of Abidjan."},
+      {en:"crane", fr:"grue", ex:"The crane lifts the containers."},
+      {en:"container", fr:"conteneur", ex:"A container is loaded on the ship."},
+      {en:"dock", fr:"quai", ex:"The truck waits on the dock."},
+      {en:"ship", fr:"navire", ex:"The ship leaves the harbour."},
+      {en:"cargo", fr:"cargaison", ex:"The cargo is heavy."},
+      {en:"berth", fr:"poste d'amarrage", ex:"The vessel is at its berth."},
+      {en:"stevedore", fr:"docker", ex:"The stevedore unloads the cargo."}
+    ],
+    "TRANSPORT": [
+      {en:"truck", fr:"camion", ex:"The truck carries goods to the warehouse."},
+      {en:"train", fr:"train", ex:"The train transports freight inland."},
+      {en:"plane", fr:"avion", ex:"The plane carries urgent cargo."},
+      {en:"warehouse", fr:"entrepôt", ex:"Goods are stored in the warehouse."},
+      {en:"freight", fr:"fret", ex:"Freight costs are included in the price."},
+      {en:"route", fr:"itinéraire", ex:"The driver chooses the best route."},
+      {en:"driver", fr:"chauffeur", ex:"The driver checks the documents."},
+      {en:"loading", fr:"chargement", ex:"Loading starts at eight o'clock."}
+    ],
+    "DOUANE": [
+      {en:"customs", fr:"douane", ex:"Customs officers check the goods."},
+      {en:"duty", fr:"droit", ex:"Import duty is paid at the border."},
+      {en:"tariff", fr:"tarif", ex:"The tariff depends on the product."},
+      {en:"declaration", fr:"déclaration", ex:"The declaration must be accurate."},
+      {en:"invoice", fr:"facture", ex:"The invoice shows the value of the goods."},
+      {en:"clearance", fr:"dédouanement", ex:"Customs clearance takes two days."},
+      {en:"inspection", fr:"inspection", ex:"The inspection is done at the port."},
+      {en:"value", fr:"valeur", ex:"The customs value is based on CIF."}
+    ],
+    "ENTREPRISE": [
+      {en:"order", fr:"commande", ex:"The client places an order."},
+      {en:"client", fr:"client", ex:"The client pays the invoice."},
+      {en:"supplier", fr:"fournisseur", ex:"The supplier delivers the goods."},
+      {en:"price", fr:"prix", ex:"The price includes transport."},
+      {en:"contract", fr:"contrat", ex:"Both parties sign the contract."},
+      {en:"stock", fr:"stock", ex:"The stock is stored in the warehouse."},
+      {en:"profit", fr:"bénéfice", ex:"The profit is calculated at the end of the year."},
+      {en:"budget", fr:"budget", ex:"The budget covers all expenses."}
+    ]
+  };
+
   // Banque de questions du quiz
   const QUIZ_BANK = [
     // ---- GDOD (douanes) ----
@@ -3220,6 +3264,261 @@
   }
 
   /* ============================================================
+     ANGLAIS — Vocabulaire visuel TLT
+     ============================================================ */
+
+  let vocabState = {
+    theme: "PORT",
+    exo: null,
+    score: 0,
+    total: 0
+  };
+
+  function vocabImgKey(en){
+    return "vocab:" + en;
+  }
+
+  function getVocabImg(en){
+    try{ return localStorage.getItem(vocabImgKey(en)); }catch(e){ return null; }
+  }
+
+  function setVocabImg(en, url){
+    try{ localStorage.setItem(vocabImgKey(en), url); }catch(e){}
+  }
+
+  async function fetchVocabImg(en){
+    const cached = getVocabImg(en);
+    if(cached) return cached;
+    const res = await fetch("/api/ai/image", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      credentials: "same-origin",
+      body: JSON.stringify({prompt: "photo réaliste, " + en + ", port d'Abidjan"})
+    });
+    let data = null;
+    try{ data = await res.json(); }catch(e){ data = null; }
+    if(!res.ok || !data || !data.ok || !data.image){
+      throw new Error((data && data.error) || "Image indisponible");
+    }
+    setVocabImg(en, data.image);
+    return data.image;
+  }
+
+  async function playVocabAudio(en){
+    try{
+      if(_audioEnCours){ try{ _audioEnCours.pause(); }catch(e){} _audioEnCours = null; }
+      if(speechAvailable()) window.speechSynthesis.cancel();
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        credentials: "same-origin",
+        body: JSON.stringify({text: en, lang: "en", speed: 1})
+      });
+      let data = null;
+      try{ data = await res.json(); }catch(e){ data = null; }
+      if(res.ok && data && data.ok && data.audio){
+        _audioEnCours = new Audio(data.audio);
+        _audioEnCours.play().catch(()=>{});
+        return;
+      }
+      // Repli navigateur en anglais
+      if(speechAvailable()){
+        const u = new SpeechSynthesisUtterance(en);
+        u.lang = "en-US";
+        u.rate = 1;
+        window.speechSynthesis.speak(u);
+      }
+    }catch(e){
+      if(speechAvailable()){
+        const u = new SpeechSynthesisUtterance(en);
+        u.lang = "en-US";
+        window.speechSynthesis.speak(u);
+      }
+    }
+  }
+
+  function renderVocabThemes(){
+    const zone = $("#vocabThemes");
+    if(!zone) return;
+    zone.innerHTML = Object.keys(VOCAB).map(t => `
+      <button class="vocab-theme ${vocabState.theme === t ? "active" : ""}" data-theme="${escapeHtml(t)}">${escapeHtml(t)}</button>
+    `).join("");
+    $$(".vocab-theme").forEach(btn => {
+      btn.addEventListener("click", () => {
+        vocabState.theme = btn.dataset.theme;
+        vocabState.exo = null;
+        renderVocabThemes();
+        renderVocabGrid();
+        const exoZone = $("#vocabExoZone");
+        if(exoZone) exoZone.innerHTML = "";
+      });
+    });
+  }
+
+  function renderVocabGrid(){
+    const zone = $("#vocabGrid");
+    if(!zone) return;
+    const mots = VOCAB[vocabState.theme] || [];
+    zone.innerHTML = mots.map(m => {
+      const img = getVocabImg(m.en);
+      return `
+        <div class="vocab-card">
+          <div class="vocab-img-wrap">
+            ${img
+              ? `<img class="vocab-img" src="${escapeHtml(img)}" alt="${escapeHtml(m.en)}">`
+              : `<div class="vocab-img vocab-img-loading" data-en="${escapeHtml(m.en)}">⏳</div>`}
+          </div>
+          <div class="vocab-body">
+            <div class="vocab-en-row">
+              <span class="vocab-en">${escapeHtml(m.en)}</span>
+              <button class="vocab-audio" data-en="${escapeHtml(m.en)}" title="Écouter" aria-label="Écouter ${escapeHtml(m.en)}">🔊</button>
+            </div>
+            <div class="vocab-fr">${escapeHtml(m.fr)}</div>
+            <div class="vocab-ex">${escapeHtml(m.ex)}</div>
+          </div>
+        </div>`;
+    }).join("");
+
+    $$(".vocab-audio").forEach(btn => {
+      btn.addEventListener("click", () => playVocabAudio(btn.dataset.en));
+    });
+
+    // Chargement paresseux des images manquantes
+    $$(".vocab-img-loading").forEach(el => {
+      const en = el.dataset.en;
+      fetchVocabImg(en).then(url => {
+        const parent = el.parentNode;
+        if(parent){
+          parent.innerHTML = `<img class="vocab-img" src="${escapeHtml(url)}" alt="${escapeHtml(en)}">`;
+        }
+      }).catch(() => {
+        el.textContent = "🖼️";
+        el.classList.remove("vocab-img-loading");
+      });
+    });
+  }
+
+  function updateVocabScore(){
+    const el = $("#vocabScore");
+    if(!el) return;
+    el.innerHTML = `Score : <b>${vocabState.score}</b> / ${vocabState.total}`;
+  }
+
+  function startVocabExo(){
+    const mots = VOCAB[vocabState.theme] || [];
+    if(mots.length < 4) return;
+    const mode = Math.random() < 0.5 ? "photo-mot" : "mot-photo";
+    const pool = shuffle(mots);
+    const bonne = pool[0];
+    const options = pool.slice(0, 4);
+    vocabState.exo = {
+      mode,
+      bonne,
+      options: shuffle(options),
+      answered: false
+    };
+    renderVocabExo();
+  }
+
+  function renderVocabExo(){
+    const zone = $("#vocabExoZone");
+    if(!zone) return;
+    const exo = vocabState.exo;
+    if(!exo){
+      zone.innerHTML = "";
+      return;
+    }
+
+    if(exo.mode === "photo-mot"){
+      const img = getVocabImg(exo.bonne.en);
+      zone.innerHTML = `
+        <div class="vocab-exo card">
+          <div class="vocab-exo-title">📸 Photo → Mot</div>
+          <div class="vocab-exo-img-wrap">
+            ${img
+              ? `<img class="vocab-exo-img" src="${escapeHtml(img)}" alt="Photo">`
+              : `<div class="vocab-exo-img vocab-img-loading" data-en="${escapeHtml(exo.bonne.en)}">⏳</div>`}
+          </div>
+          <div class="vocab-exo-options">
+            ${exo.options.map(o => `<button class="vocab-exo-opt" data-en="${escapeHtml(o.en)}">${escapeHtml(o.en)}</button>`).join("")}
+          </div>
+          <div class="vocab-exo-feedback" id="vocabExoFeedback"></div>
+        </div>`;
+    } else {
+      zone.innerHTML = `
+        <div class="vocab-exo card">
+          <div class="vocab-exo-title">🔤 Mot → Photo</div>
+          <div class="vocab-exo-word">${escapeHtml(exo.bonne.en)}</div>
+          <div class="vocab-exo-options vocab-exo-options-img">
+            ${exo.options.map(o => {
+              const img = getVocabImg(o.en);
+              return `<button class="vocab-exo-opt vocab-exo-opt-img" data-en="${escapeHtml(o.en)}">
+                ${img
+                  ? `<img class="vocab-exo-thumb" src="${escapeHtml(img)}" alt="${escapeHtml(o.en)}">`
+                  : `<div class="vocab-exo-thumb vocab-img-loading" data-en="${escapeHtml(o.en)}">⏳</div>`}
+              </button>`;
+            }).join("")}
+          </div>
+          <div class="vocab-exo-feedback" id="vocabExoFeedback"></div>
+        </div>`;
+    }
+
+    // Chargement des images manquantes
+    $$("#vocabExoZone .vocab-img-loading").forEach(el => {
+      const en = el.dataset.en;
+      fetchVocabImg(en).then(url => {
+        const parent = el.parentNode;
+        if(parent){
+          const cls = el.classList.contains("vocab-exo-thumb") ? "vocab-exo-thumb" : "vocab-exo-img";
+          parent.innerHTML = `<img class="${cls}" src="${escapeHtml(url)}" alt="${escapeHtml(en)}">`;
+        }
+      }).catch(() => {
+        el.textContent = "🖼️";
+        el.classList.remove("vocab-img-loading");
+      });
+    });
+
+    $$("#vocabExoZone .vocab-exo-opt").forEach(btn => {
+      btn.addEventListener("click", () => answerVocabExo(btn.dataset.en));
+    });
+  }
+
+  function answerVocabExo(en){
+    const exo = vocabState.exo;
+    if(!exo || exo.answered) return;
+    exo.answered = true;
+    const correct = en === exo.bonne.en;
+    vocabState.total++;
+    if(correct) vocabState.score++;
+    updateVocabScore();
+
+    $$("#vocabExoZone .vocab-exo-opt").forEach(btn => {
+      btn.disabled = true;
+      if(btn.dataset.en === exo.bonne.en) btn.classList.add("good");
+      else if(btn.dataset.en === en) btn.classList.add("bad");
+    });
+
+    const fb = $("#vocabExoFeedback");
+    if(fb){
+      fb.innerHTML = `
+        <div class="quiz-fb-title ${correct ? "ok" : "ko"}">${correct ? "✅ Well done !" : "❌ Presque !"}</div>
+        <div class="quiz-fb-exp">${escapeHtml(exo.bonne.en)} = ${escapeHtml(exo.bonne.fr)} — ${escapeHtml(exo.bonne.ex)}</div>
+        <button class="btn quiz-next" id="vocabExoNextBtn">Question suivante</button>
+      `;
+      const next = $("#vocabExoNextBtn");
+      if(next) next.addEventListener("click", startVocabExo);
+    }
+  }
+
+  function initAnglais(){
+    renderVocabThemes();
+    renderVocabGrid();
+    updateVocabScore();
+    const btn = $("#vocabExoBtn");
+    if(btn) btn.addEventListener("click", startVocabExo);
+  }
+
+  /* ============================================================
      ASSISTANT — Coach IA + Voix off
      ============================================================ */
 
@@ -3498,6 +3797,7 @@
     renderGamesMenu();
     initEtude();
     initFlashcards();
+    initAnglais();
     initAssistant();
     initBienvenue();
     renderSuivi();

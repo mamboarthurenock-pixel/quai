@@ -1390,6 +1390,158 @@ body.modal-open{overflow:hidden}
 
 .welcome-start{margin:0}
 
+/* ---------- Anglais : vocabulaire visuel ---------- */
+.vocab-themes{
+  display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;
+}
+.vocab-theme{
+  padding:9px 16px;border-radius:999px;
+  background:rgba(7,12,23,.6);
+  border:1px solid var(--line-soft);
+  color:var(--muted);font-family:inherit;font-size:12.5px;font-weight:700;
+  letter-spacing:.5px;cursor:pointer;transition:.22s;
+}
+.vocab-theme:hover{border-color:rgba(34,211,238,.5);color:var(--text)}
+.vocab-theme.active{
+  color:#0a0616;
+  background:var(--grad-main);background-size:200% auto;
+  border-color:transparent;
+  box-shadow:0 0 18px -4px rgba(34,211,238,.7),0 0 24px -8px rgba(167,139,250,.6);
+}
+
+.vocab-exo-bar{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  flex-wrap:wrap;margin-bottom:16px;
+}
+.vocab-exo-bar .btn{width:auto;padding:12px 20px;font-size:14px;margin:0}
+.vocab-score{
+  font-family:var(--mono);font-size:12.5px;color:var(--muted);
+}
+.vocab-score b{color:var(--green)}
+
+.vocab-grid{
+  display:grid;grid-template-columns:1fr;gap:14px;
+}
+.vocab-card{
+  background:var(--card);
+  backdrop-filter:blur(14px) saturate(1.4);
+  -webkit-backdrop-filter:blur(14px) saturate(1.4);
+  border:1px solid var(--line-soft);
+  border-radius:var(--radius);
+  overflow:hidden;
+  box-shadow:var(--shadow);
+  transition:transform .25s,border-color .25s,box-shadow .25s;
+}
+.vocab-card:hover{
+  transform:translateY(-3px);
+  border-color:rgba(34,211,238,.45);
+  box-shadow:0 18px 40px -18px rgba(34,211,238,.6),0 0 28px -10px rgba(167,139,250,.4);
+}
+.vocab-img-wrap{
+  aspect-ratio:16/10;overflow:hidden;background:rgba(7,12,23,.6);
+}
+.vocab-img{
+  width:100%;height:100%;object-fit:cover;display:block;
+}
+.vocab-img-loading{
+  display:grid;place-items:center;
+  font-size:26px;color:var(--muted);
+  animation:float 2.4s ease-in-out infinite;
+}
+.vocab-body{padding:14px 16px 16px}
+.vocab-en-row{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+}
+.vocab-en{
+  font-size:20px;font-weight:800;letter-spacing:.3px;
+  background:var(--grad-main);background-size:200% auto;
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;
+  animation:gradientText 8s linear infinite;
+}
+.vocab-audio{
+  flex:0 0 36px;width:36px;height:36px;border-radius:50%;
+  display:grid;place-items:center;font-size:16px;
+  background:rgba(34,211,238,.12);
+  border:1px solid rgba(34,211,238,.35);
+  color:var(--accent);cursor:pointer;transition:.2s;
+}
+.vocab-audio:hover{
+  background:rgba(34,211,238,.22);
+  box-shadow:0 0 18px -4px rgba(34,211,238,.7);
+  transform:scale(1.06);
+}
+.vocab-fr{
+  font-size:14px;color:var(--text);margin-top:4px;font-weight:600;
+}
+.vocab-ex{
+  font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.5;
+  font-style:italic;
+}
+
+/* Exercice vocabulaire */
+.vocab-exo{margin-bottom:18px}
+.vocab-exo-title{
+  font-size:11px;text-transform:uppercase;letter-spacing:1.5px;
+  color:var(--accent);font-weight:700;margin-bottom:14px;
+}
+.vocab-exo-img-wrap{
+  aspect-ratio:16/10;overflow:hidden;border-radius:14px;
+  background:rgba(7,12,23,.6);margin-bottom:16px;
+  border:1px solid var(--line-soft);
+}
+.vocab-exo-img{width:100%;height:100%;object-fit:cover;display:block}
+.vocab-exo-word{
+  font-size:28px;font-weight:800;text-align:center;margin-bottom:16px;
+  background:var(--grad-main);background-size:200% auto;
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;
+  animation:gradientText 8s linear infinite;
+}
+.vocab-exo-options{display:grid;gap:10px}
+.vocab-exo-options-img{grid-template-columns:1fr 1fr}
+.vocab-exo-opt{
+  width:100%;text-align:left;
+  background:rgba(7,12,23,.6);
+  border:1px solid var(--line-soft);
+  border-radius:12px;padding:13px 15px;
+  color:var(--text);font-family:inherit;font-size:14px;font-weight:600;
+  cursor:pointer;transition:.2s;
+}
+.vocab-exo-opt:hover:not(:disabled){
+  border-color:rgba(34,211,238,.6);
+  background:rgba(34,211,238,.08);
+  box-shadow:0 0 20px -8px rgba(34,211,238,.5);
+}
+.vocab-exo-opt:disabled{cursor:default}
+.vocab-exo-opt.good{
+  border-color:rgba(52,211,153,.7);
+  background:rgba(52,211,153,.14);
+  color:var(--green);
+  box-shadow:0 0 20px -6px rgba(52,211,153,.6);
+}
+.vocab-exo-opt.bad{
+  border-color:rgba(251,113,133,.7);
+  background:rgba(251,113,133,.14);
+  color:var(--rose);
+  box-shadow:0 0 20px -6px rgba(251,113,133,.6);
+}
+.vocab-exo-opt-img{
+  padding:0;overflow:hidden;aspect-ratio:16/10;
+}
+.vocab-exo-thumb{
+  width:100%;height:100%;object-fit:cover;display:block;
+}
+.vocab-exo-feedback{margin-top:16px}
+.vocab-exo-feedback:empty{display:none}
+
+@media(min-width:640px){
+  .vocab-grid{grid-template-columns:1fr 1fr}
+}
+@media(min-width:900px){
+  .vocab-grid{grid-template-columns:1fr 1fr 1fr}
+}
+
 /* ---------- Voix off flottante ---------- */
 .voix-flottante{
   position:fixed;
